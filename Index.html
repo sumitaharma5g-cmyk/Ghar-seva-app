@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>घर सेवा ऐप - अपने घर के लिए मिस्त्री ढूंढें</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .hidden { display: none !important; }
+        .star { cursor: pointer; transition: all 0.2s; }
+        .star:hover { transform: scale(1.1); }
+    </style>
+</head>
+<body class="bg-gray-50">
+
+<div id="app"></div>
+
+<script>
+    // State Management
+    let state = {
+        userType: null,
+        isLoggedIn: false,
+        currentUser: null,
+        workers: [
+            { 
+                id: 1, 
+                name: 'राजेश कुमार', 
+                phone: '9876543210', 
+                category: 'प्लंबिंग', 
+                experience: '8', 
+                area: 'लाजपत नगर, दिल्ली',
+                upiId: 'rajesh@paytm',
+                rating: 4.5,
+                totalReviews: 23,
+                reviews: [
+                    { id: 1, customerName: 'अमित शर्मा', rating: 5, comment: 'बहुत अच्छा काम किया', timestamp: '01/11/2024' }
+                ]
+            },
+            { 
+                id: 2, 
+                name: 'सुरेश शर्मा', 
+                phone: '9876543211', 
+                category: 'इलेक्ट्रिशियन', 
+                experience: '12', 
+                area: 'राजौरी गार्डन, दिल्ली',
+                upiId: 'suresh@phonepe',
+                rating: 4.8,
+                totalReviews: 45,
+                reviews: [
+                    { id: 2, customerName: 'प्रिया वर्मा', rating: 5, comment: 'समय पर आए और अच्छा काम किया', timestamp: '30/10/2024' }
+                ]
+            },
+            { 
+                id: 3, 
+                name: 'अमित वर्मा', 
+                phone: '9876543212', 
+                category: 'किचन रिपेयर', 
+                experience: '5', 
+                area: 'द्वारका, दिल्ली',
+                upiId: 'amit@gpay',
+                rating: 4.2,
+                totalReviews: 15,
+                reviews: []
+            }
+        ],
+        requests: [],
+        formData: { name: '', phone: '', category: '', experience: '', area: '', upiId: '' },
+        requestData: { category: '', description: '', photo: null },
+        feedbackData: { rating: 0, comment: '' },
+        paymentData: { amount: '', transactionId: '' },
+        showPayment: null,
+        showFeedback: null
+    };
+
+    const categories = [
+        { name: 'प्लंबिंग', icon: '🚰' },
+        { name: 'इलेक्ट्रिशियन', icon: '⚡' },
+        { name: 'गैस सिलेंडर', icon: '🔥' },
+        { name: 'किचन रिपेयर', icon: '🍳' },
+        { name: 'छत/दीवार', icon: '🏠' },
+        { name: 'अन्य मिस्त्री', icon: '🔧' }
+    ];
+
+    function generateQRCode(upiId, name, amount = '') {
+        const upiString = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(name)}${amount ? `&am=${amount}` : ''}&cu=INR`;
+        return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiString)}`;
+    }
+
+    function render() {
+        const app = document.getElementById('app');
+        if (state.showPayment) {
+            app.innerHTML = renderPaymentScreen();
+        } else if (state.showFeedback) {
+            app.innerHTML = renderFeedbackScreen();
+        } else if (!state.userType) {
+            app.innerHTML = renderUserTypeSelection();
+        } else if (!state.isLoggedIn) {
+            app.innerHTML = renderRegistration();
+        } else if (state.userType === 'customer') {
+            app.innerHTML = renderCustomerDashboard();
+        } else if (state.userType === 'worker') {
+            app.innerHTML = renderWorkerDashboard();
+        }
+    }
+
+    function renderUserTypeSelection() {
+        return `
+            <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+                <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
+                    <div class="text-center mb-8">
+                        <div class="text-6xl mb-4">🔧</div>
+                        <h1 class="text-3xl font-bold text-gray-800 mb-2">घर सेवा ऐप</h1>
+                        <p class="text-gray-600">अपने घर के लिए मिस्त्री ढूंढें</p>
+                    </div>
+                    <div class="space-y-4">
+                        <button onclick="selectUserType('customer')" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-4 px-6 rounded-xl transition duration-300 flex items-center justify-center gap-3 shadow-lg">
+                            <span class="text-2xl">👤</span>
+                            मैं ग्राहक हूं
+                        </button>
+                        <button onclick="selectUserType('worker')" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-4 px-6 rounded-xl transition duration-300 flex items-center justify-center gap-3 shadow-lg">
+                            <span class="text-2xl">🔧</span>
+                            मैं मिस्त्री हूं
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderRegistration() {
+        const isWorker = state.userType === 'worker';
+        return `
+            <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+                <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">
+                        ${isWorker ? 'मिस्त्री रजिस्ट्रेशन' : 'ग्राहक रजिस्ट्रेशन'}
+                    </h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">नाम</label>
+                            <input type="text" id="name" onchange="updateFormData('name', this.value)" class="w-full px-4 py-3 border border-gray-300 rounded-lg" placeholder="अपना नाम दर्ज करें">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">फोन नंबर</label>
+                            <input type="tel" id="phone" onchange="updateFormData('phone', this.value)" class="w-full px-4 py-3 border border-gray-300 rounded-lg" placeholder="10 अंकों का नंबर">
+                        </div>
+                        ${isWorker ? `
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">सर्विस कैटेगरी</label>
+                                <select id="category" onchange="updateFormData('category', this.value)" class="w-full px-4 py-3 border border-gray-300 rounded-lg">
+                                    <option value="">चुनें</option>
+                                    ${categories.map(cat => `<option value="${cat.name}">${cat.name}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">अनुभव (वर्षों में)</label>
+                                <input type="number" id="experience" onchange="updateFormData('experience', this.value)" class="w-full px-4 py-3 border border-gray-300 rounded-lg" placeholder="जैसे: 5">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">क्षेत्र/इलाका</label>
+                                <input type="text" id="area" onchange="updateFormData('area', this.value)" class="w-full px-4 py-3 border border-gray-300 rounded-lg" placeholder="जैसे: राजौरी गार्डन, दिल्ली">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">UPI ID <span class="text-red-500">*</span></label>
+                                <input type="text" id="upiId" onchange="updateFormData('upiId', this.value)" class="w-full px-4 py-3 border border-gray-300 rounded-lg" placeholder="yourname@paytm">
+                            </div>
+                        ` : ''}
+                        <button onclick="handleRegister()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg">रजिस्टर करें</button>
+                        <button onclick="resetUserType()" class="w-full text-gray-600 hover:text-gray-800 py-2">वापस जाएं</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderCustomerDashboard() {
+        const filteredWorkers = state.workers.filter(w => !state.requestData.category || w.category === state.requestData.category);
+        return `
+            <div class="min-h-screen bg-gray-50">
+                <header class="bg-indigo-600 text-white p-4 shadow-lg">
+                    <div class="max-w-6xl mx-auto flex justify-between items-center">
+                        <div class="flex items-center gap-2">
+                            <span class="text-3xl">🔧</span>
+                            <h1 class="text-2xl font-bold">घर सेवा ऐप</h1>
+                        </div>
+                        <button onclick="logout()" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg">🚪 लॉगआउट</button>
+                    </div>
+                </header>
+                <div class="max-w-6xl mx-auto p-6">
+                    <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800 mb-6">नया रिक्वेस्ट भेजें</h2>
+                        <div class="space-y-6">
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-3">सर्विस कैटेगरी चुनें</label>
+                                <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                    ${categories.map(cat => `
+                                        <button onclick="selectCategory('${cat.name}')" class="p-4 rounded-xl border-2 ${state.requestData.category === cat.name ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200'}">
+                                            <div class="text-4xl mb-2">${cat.icon}</div>
+                                            <p class="text-sm font-medium">${cat.name}</p>
+                                        </button>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">काम का विवरण</label>
+                                <textarea id="description" onchange="updateRequestData('description', this.value)" class="w-full px-4 py-3 border rounded-lg" rows="4"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">फोटो अपलोड करें</label>
+                                <input type="file" accept="image/*" onchange="handleImageUpload(event)" class="w-full px-4 py-3 border rounded-lg">
+                                ${state.requestData.photo ? `<img src="${state.requestData.photo}" class="mt-4 max-w-xs rounded-lg">` : ''}
+                            </div>
+                            <button onclick="handleRequest()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-4 rounded-lg">रिक्वेस्ट भेजें</button>
+                        </div>
+                    </div>
+                    ${state.requestData.category ? `
+                        <div class="bg-white rounded-xl shadow-lg p-6">
+                            <h2 class="text-2xl font-bold mb-6">उपलब्ध मिस्त्री - ${state.requestData.category}</h2>
+                            <div class="grid md:grid-cols-2 gap-4">
+                                ${filteredWorkers.map(worker => `
+                                    <div class="border rounded-lg p-4">
+                                        <h3 class="text-xl font-bold">${worker.name}</h3>
+                                        <p class="text-sm text-gray-600">${worker.category}</p>
+                                        <p class="text-sm text-gray-500">${worker.area}</p>
+                                        <div class="flex gap-1 my-2">
+                                            <span>⭐ ${worker.rating.toFixed(1)}</span>
+                                            <span class="text-xs text-gray-500">(${worker.totalReviews})</span>
+                                        </div>
+                                        <div class="flex gap-2 mt-3">
+                                            <a href="tel:${worker.phone}" class="flex-1 bg-green-500 text-white py-3 rounded-lg text-center">📞 कॉल</a>
+                                            <button onclick="showPaymentScreen(${worker.id}, '${worker.name}')" class="flex-1 bg-indigo-500 text-white py-3 rounded-lg">💳 पेमेंट</button>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }
+
+    function renderWorkerDashboard() {
+        const myRequests = state.requests.filter(r => r.category === state.currentUser.category);
+        return `
+            <div class="min-h-screen bg-gray-50">
+                <header class="bg-green-600 text-white p-4">
+                    <div class="flex justify-between items-center">
+                        <h1 class="text-2xl font-bold">🔧 मिस्त्री डैशबोर्ड</h1>
+                        <button onclick="logout()" class="bg-red-500 px-4 py-2 rounded-lg">लॉगआउट</button>
+                    </div>
+                </header>
+                <div class="max-w-6xl mx-auto p-6">
+                    <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+                        <h2 class="text-2xl font-bold mb-4">आपकी प्रोफाइल</h2>
+                        <div class="grid md:grid-cols-2 gap-4 mb-6">
+                            <p><strong>नाम:</strong> ${state.currentUser.name}</p>
+                            <p><strong>फोन:</strong> ${state.currentUser.phone}</p>
+                            <p><strong>कैटेगरी:</strong> ${state.currentUser.category}</p>
+                            <p><strong>UPI:</strong> ${state.currentUser.upiId}</p>
+                        </div>
+                        <h3 class="font-bold mb-3">📱 आपका QR Code</h3>
+                        <img src="${generateQRCode(state.currentUser.upiId, state.currentUser.name)}" class="rounded-lg shadow-md">
+                    </div>
+                    <div class="bg-white rounded-xl shadow-lg p-6">
+                        <h2 class="text-2xl font-bold mb-6">नए रिक्वेस्ट (${myRequests.length})</h2>
+                        ${myRequests.length === 0 ? '<p class="text-center py-8">कोई रिक्वेस्ट नहीं</p>' : myRequests.map(req => `
+                            <div class="border rounded-lg p-5 mb-4">
+                                <h3 class="font-bold">${req.customerName}</h3>
+                                <p class="text-sm text-gray-500">${req.timestamp}</p>
+                                <p class="my-3">${req.description}</p>
+                                ${req.photo ? `<img src="${req.photo}" class="max-w-md rounded-lg mb-4">` : ''}
+                                <a href="tel:${req.customerPhone}" class="inline-block bg-green-500 text-white py-3 px-6 rounded-lg">📞 कॉल करें</a>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderPaymentScreen() {
+        const worker = state.workers.find(w => w.id === state.showPayment.workerId);
+        return `
+            <div class="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
+                    <h2 class="text-2xl font-bold mb-6 text-center">पेमेंट करें</h2>
+                    <div class="bg-indigo-50 rounded-lg p-4 mb-4">
+                        <p class="font-medium">${worker.name}</p>
+                        <p class="text-sm">${worker.category}</p>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block font-medium mb-2">राशि (₹)</label>
+                        <input type="number" id="paymentAmount" onchange="updatePaymentData('amount', this.value)" class="w-full px-4 py-3 border rounded-lg" placeholder="500">
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg mb-4 text-center">
+                        <p class="text-sm mb-3">UPI से स्कैन करें</p>
+                        <img src="${generateQRCode(worker.upiId, worker.name, state.paymentData.amount)}" class="mx-auto rounded-lg">
+                        <p class="text-sm mt-3">UPI: <strong>${worker.upiId}</strong></p>
+                    </div>
+                    <button onclick="handlePayment()" class="w-full bg-green-600 text-white py-3 rounded-lg mb-3">पेमेंट पूरी हुई</button>
+                    <button onclick="closePayment()" class="w-full bg-gray-200 py-3 rounded-lg">वापस</button>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderFeedbackScreen() {
+        return `
+            <div class="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
+                    <h2 class="text-2xl font-bold mb-6 text-center">फीडबैक दें</h2>
+                    <p class="text-center font-medium mb-6">${state.showFeedback.workerName}</p>
+                    <div class="mb-6">
+                        <label class="block font-medium mb-3 text-center">रेटिंग दें</label>
+                        <div class="flex justify-center gap-2">
+                            ${[1,2,3,4,5].map(s => `
+                                <button onclick="setRating(${s})" class="star text-4xl ${s <= state.feedbackData.rating ? 'text-yellow-400' : 'text-gray-300'}">★</button>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <div class="mb-6">
+                        <label class="block font-medium mb-2">कमेंट</label>
+                        <textarea id="feedbackComment" onchange="updateFeedbackData('comment', this.value)" class="w-full px-4 py-3 border rounded-lg" rows="4"></textarea>
+                    </div>
+                    <button onclick="submitFeedback()" class="w-full bg-indigo-600 text-white py-3 rounded-lg mb-3">सबमिट करें</button>
+                    <button onclick="closeFeedback()" class="w-full bg-gray-200 py-3 rounded-lg">बाद में</button>
+                </div>
+            </div>
+        `;
+    }
+
+    // Functions
+    function selectUserType(type) { state.userType = type; render(); }
+    function resetUserType() { state.userType = null; render(); }
+    function updateFormData(field, value) { state.formData[field] = value; }
+    function handleRegister() {
+        if (!state.formData.name || !state.formData.phone) return alert('सभी फील्ड भरें');
+        if (state.userType === 'worker') {
+            if (!state.formData.category || !state.formData.upiId) return alert('सभी फील्ड भरें');
+            state.currentUser = { id: Date.now(), ...state.formData, rating: 0, totalReviews: 0, reviews: [] };
+            state.workers.push(state.currentUser);
+        } else {
+            state.currentUser = { id: Date.now(), name: state.formData.name, phone: state.formData.phone };
+        }
+        state.isLoggedIn = true;
+        render();
+    }
+    function selectCategory(cat) { state.requestData.category = cat; render(); }
+    function updateRequestData(field, value) { state.requestData[field] = value; }
+    function handleImageUpload(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => { state.requestData.photo = reader.result; render(); };
+            reader.readAsDataURL(file);
+        }
+    }
+    function handleRequest() {
+        if (!state.requestData.category || !state.requestData.description) return alert('कैटेगरी और विवरण भरें');
+        state.requests.push({
+            id: Date.now(),
+            customerId: state.currentUser.id,
+            customerName: state.currentUser.name,
+            customerPhone: state.currentUser.phone,
+            ...state.requestData,
+            timestamp: new Date().toLocaleString('hi-IN')
+        });
+        alert('रिक्वेस्ट भेज दिया गया!');
+        state.requestData = { category: '', description: '', photo: null };
+        render();
+    }
+    function showPaymentScreen(id, name) { state.showPayment = { workerId: id, workerName: name }; render(); }
+    function closePayment() { state.showPayment = null; render(); }
+    function updatePaymentData(field, value) { state.paymentData[field] = value; render(); }
+    function handlePayment() {
+        if (!state.paymentData.amount) return alert('राशि दर्ज करें');
+        state.showFeedback = { workerId: state.showPayment.workerId, workerName: state.showPayment.workerName, amount: state.paymentData.amount };
+        state.showPayment = null;
+        render();
+    }
+    function setRating(r) { state.feedbackData.rating = r; render(); }
+    function updateFeedbackData(field, value) { state.feedbackData[field] = value; }
+    function submitFeedback() {
+        if (!state.feedbackData.rating) return alert('रेटिंग दें');
+        const idx = state.workers.findIndex(w => w.id === state.showFeedback.workerId);
+        if (idx !== -1) {
+            const review = { id: Date.now(), customerName: state.currentUser.name, rating: state.feedbackData.rating, comment: state.feedbackData.comment, timestamp: new Date().toLocaleString('hi-IN') };
+            state.workers[idx].reviews.push(review);
+            state.workers[idx].rating = state.workers[idx].reviews.reduce((a,r) => a + r.rating, 0) / state.workers[idx].reviews.length;
+            state.workers[idx].totalReviews = state.workers[idx].reviews.length;
+        }
+        alert('फीडबैक सबमिट हो गया!');
+        state.showFeedback = null;
+        state.feedbackData = { rating: 0, comment: '' };
+        render();
+    }
+    function closeFeedback() { state.showFeedback = null; render(); }
+    function logout() { state = { ...state, isLoggedIn: false, userType: null, currentUser: null }; render(); }
+
+    render();
+</script>
+</body>
+</html>
