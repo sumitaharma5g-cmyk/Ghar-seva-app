@@ -1,15 +1,16 @@
+बिल्कुल! यहाँ **पूरा code एक बार में:**
 
+```html
 <!DOCTYPE html>
 <html lang="hi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>घर सेवा ऐप - Admin Panel</title>
+    <title>घर सेवा ऐप</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .hidden { display: none !important; }
         .star { cursor: pointer; transition: all 0.2s; }
         .star:hover { transform: scale(1.1); }
         @media print {
@@ -24,49 +25,20 @@
 <div id="app"></div>
 
 <script>
-    // Admin credentials
-    const ADMIN_USERNAME = 'admin';
-    const ADMIN_PASSWORD = 'admin123';
+    const ADMIN_PHONE = '8218197964';
+    let generatedOTP = null;
+    let otpGeneratedTime = null;
 
-    // Available areas
-    const areas = [
-        'लाजपत नगर', 'राजौरी गार्डन', 'द्वारका', 'रोहिणी', 'पीतमपुरा',
-        'करोल बाग', 'सरिता विहार', 'नेहरू प्लेस', 'कनॉट प्लेस', 'वसंत कुंज'
-    ];
+    const areas = ['लाजपत नगर', 'राजौरी गार्डन', 'द्वारका', 'रोहिणी', 'पीतमपुरा', 'करोल बाग', 'सरिता विहार', 'नेहरू प्लेस', 'कनॉट प्लेस', 'वसंत कुंज'];
 
-    // State Management
     let state = {
         userType: null,
         isLoggedIn: false,
         currentUser: null,
         isAdmin: false,
         workers: [
-            { 
-                id: 1, 
-                name: 'राजेश कुमार', 
-                phone: '9876543210', 
-                category: 'प्लंबिंग', 
-                experience: '8', 
-                area: 'लाजपत नगर',
-                upiId: 'rajesh@paytm',
-                rating: 4.5,
-                totalReviews: 23,
-                verified: true,
-                reviews: []
-            },
-            { 
-                id: 2, 
-                name: 'सुरेश शर्मा', 
-                phone: '9876543211', 
-                category: 'इलेक्ट्रिशियन', 
-                experience: '12', 
-                area: 'राजौरी गार्डन',
-                upiId: 'suresh@phonepe',
-                rating: 4.8,
-                totalReviews: 45,
-                verified: true,
-                reviews: []
-            }
+            { id: 1, name: 'राजेश कुमार', phone: '9876543210', category: 'प्लंबिंग', experience: '8', area: 'लाजपत नगर', upiId: 'rajesh@paytm', rating: 4.5, totalReviews: 23, verified: true, reviews: [] },
+            { id: 2, name: 'सुरेश शर्मा', phone: '9876543211', category: 'इलेक्ट्रिशियन', experience: '12', area: 'राजौरी गार्डन', upiId: 'suresh@phonepe', rating: 4.8, totalReviews: 45, verified: true, reviews: [] }
         ],
         customers: [],
         requests: [],
@@ -77,7 +49,7 @@
         showPayment: null,
         showFeedback: null,
         showSlip: null,
-        adminLogin: { username: '', password: '' }
+        adminLogin: { phone: '', otp: '', otpSent: false }
     };
 
     const categories = [
@@ -100,7 +72,6 @@
 
     function render() {
         const app = document.getElementById('app');
-        
         if (state.showSlip) {
             app.innerHTML = renderRequestSlip();
         } else if (state.showPayment) {
@@ -156,14 +127,23 @@
                         <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">🔐 Admin Login</h2>
                         <div class="space-y-4">
                             <div>
-                                <label class="block text-gray-700 font-medium mb-2">Username</label>
-                                <input type="text" id="adminUser" onchange="updateAdminLogin('username', this.value)" class="w-full px-4 py-3 border border-gray-300 rounded-lg" placeholder="admin">
+                                <label class="block text-gray-700 font-medium mb-2">Admin Phone Number</label>
+                                <input type="tel" value="${state.adminLogin.phone}" onchange="updateAdminLogin('phone', this.value)" class="w-full px-4 py-3 border border-gray-300 rounded-lg" placeholder="8218197964" maxlength="10" ${state.adminLogin.otpSent ? 'readonly' : ''}>
                             </div>
-                            <div>
-                                <label class="block text-gray-700 font-medium mb-2">Password</label>
-                                <input type="password" id="adminPass" onchange="updateAdminLogin('password', this.value)" class="w-full px-4 py-3 border border-gray-300 rounded-lg" placeholder="••••••">
-                            </div>
-                            <button onclick="handleAdminLogin()" class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 rounded-lg">Login</button>
+                            ${state.adminLogin.otpSent ? `
+                                <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                                    <p class="text-sm text-green-800">✓ OTP भेज दिया गया!</p>
+                                    <p class="text-xs text-green-600 mt-1">OTP: <strong>${generatedOTP}</strong> (Demo)</p>
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 font-medium mb-2">Enter OTP</label>
+                                    <input type="text" onchange="updateAdminLogin('otp', this.value)" class="w-full px-4 py-3 border border-gray-300 rounded-lg text-center text-2xl tracking-widest" placeholder="----" maxlength="4">
+                                </div>
+                                <button onclick="verifyOTP()" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg">Verify & Login</button>
+                                <button onclick="sendOTP()" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg text-sm">Resend OTP</button>
+                            ` : `
+                                <button onclick="sendOTP()" class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 rounded-lg">Send OTP</button>
+                            `}
                             <button onclick="resetUserType()" class="w-full text-gray-600 hover:text-gray-800 py-2">वापस जाएं</button>
                         </div>
                     </div>
@@ -175,21 +155,19 @@
         return `
             <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
                 <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
-                    <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">
-                        ${isWorker ? 'मिस्त्री रजिस्ट्रेशन' : 'ग्राहक रजिस्ट्रेशन'}
-                    </h2>
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">${isWorker ? 'मिस्त्री रजिस्ट्रेशन' : 'ग्राहक रजिस्ट्रेशन'}</h2>
                     <div class="space-y-4">
                         <div>
                             <label class="block text-gray-700 font-medium mb-2">नाम</label>
-                            <input type="text" id="name" onchange="updateFormData('name', this.value)" class="w-full px-4 py-3 border border-gray-300 rounded-lg" placeholder="अपना नाम">
+                            <input type="text" onchange="updateFormData('name', this.value)" class="w-full px-4 py-3 border rounded-lg" placeholder="अपना नाम">
                         </div>
                         <div>
                             <label class="block text-gray-700 font-medium mb-2">फोन नंबर</label>
-                            <input type="tel" id="phone" onchange="updateFormData('phone', this.value)" class="w-full px-4 py-3 border border-gray-300 rounded-lg" placeholder="10 अंक">
+                            <input type="tel" onchange="updateFormData('phone', this.value)" class="w-full px-4 py-3 border rounded-lg" placeholder="10 अंक">
                         </div>
                         <div>
                             <label class="block text-gray-700 font-medium mb-2">क्षेत्र/इलाका</label>
-                            <select id="area" onchange="updateFormData('area', this.value)" class="w-full px-4 py-3 border border-gray-300 rounded-lg">
+                            <select onchange="updateFormData('area', this.value)" class="w-full px-4 py-3 border rounded-lg">
                                 <option value="">चुनें</option>
                                 ${areas.map(a => `<option value="${a}">${a}</option>`).join('')}
                             </select>
@@ -197,22 +175,22 @@
                         ${isWorker ? `
                             <div>
                                 <label class="block text-gray-700 font-medium mb-2">सर्विस कैटेगरी</label>
-                                <select id="category" onchange="updateFormData('category', this.value)" class="w-full px-4 py-3 border border-gray-300 rounded-lg">
+                                <select onchange="updateFormData('category', this.value)" class="w-full px-4 py-3 border rounded-lg">
                                     <option value="">चुनें</option>
-                                    ${categories.map(cat => `<option value="${cat.name}">${cat.name}</option>`).join('')}
+                                    ${categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('')}
                                 </select>
                             </div>
                             <div>
                                 <label class="block text-gray-700 font-medium mb-2">अनुभव (वर्ष)</label>
-                                <input type="number" id="experience" onchange="updateFormData('experience', this.value)" class="w-full px-4 py-3 border border-gray-300 rounded-lg" placeholder="5">
+                                <input type="number" onchange="updateFormData('experience', this.value)" class="w-full px-4 py-3 border rounded-lg" placeholder="5">
                             </div>
                             <div>
-                                <label class="block text-gray-700 font-medium mb-2">UPI ID <span class="text-red-500">*</span></label>
-                                <input type="text" id="upiId" onchange="updateFormData('upiId', this.value)" class="w-full px-4 py-3 border border-gray-300 rounded-lg" placeholder="name@paytm">
+                                <label class="block text-gray-700 font-medium mb-2">UPI ID</label>
+                                <input type="text" onchange="updateFormData('upiId', this.value)" class="w-full px-4 py-3 border rounded-lg" placeholder="name@paytm">
                             </div>
                         ` : ''}
-                        <button onclick="handleRegister()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg">रजिस्टर करें</button>
-                        <button onclick="resetUserType()" class="w-full text-gray-600 hover:text-gray-800 py-2">वापस जाएं</button>
+                        <button onclick="handleRegister()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-lg">रजिस्टर करें</button>
+                        <button onclick="resetUserType()" class="w-full text-gray-600 py-2">वापस जाएं</button>
                     </div>
                 </div>
             </div>
@@ -230,89 +208,60 @@
             <div class="min-h-screen bg-gray-50">
                 <header class="bg-indigo-600 text-white p-4 shadow-lg">
                     <div class="max-w-6xl mx-auto flex justify-between items-center">
-                        <div class="flex items-center gap-2">
-                            <span class="text-3xl">🔧</span>
-                            <div>
-                                <h1 class="text-xl md:text-2xl font-bold">घर सेवा ऐप</h1>
-                                <p class="text-xs">${state.currentUser.name} - ${state.currentUser.area}</p>
-                            </div>
+                        <div>
+                            <h1 class="text-xl font-bold">घर सेवा ऐप</h1>
+                            <p class="text-xs">${state.currentUser.name}</p>
                         </div>
-                        <button onclick="logout()" class="bg-red-500 hover:bg-red-600 px-3 py-2 rounded-lg text-sm">🚪 लॉगआउट</button>
+                        <button onclick="logout()" class="bg-red-500 px-3 py-2 rounded text-sm">लॉगआउट</button>
                     </div>
                 </header>
-                <div class="max-w-6xl mx-auto p-4 md:p-6">
-                    <div class="bg-white rounded-xl shadow-lg p-4 md:p-6 mb-6">
-                        <h2 class="text-xl md:text-2xl font-bold text-gray-800 mb-6">नया रिक्वेस्ट भेजें</h2>
-                        <div class="space-y-6">
-                            <div>
-                                <label class="block text-gray-700 font-medium mb-3">अपना इलाका</label>
-                                <select onchange="updateRequestData('area', this.value)" class="w-full px-4 py-3 border border-gray-300 rounded-lg">
-                                    <option value="">अपना area चुनें</option>
-                                    ${areas.map(a => `<option value="${a}" ${state.requestData.area === a ? 'selected' : ''}>${a}</option>`).join('')}
-                                </select>
+                <div class="max-w-6xl mx-auto p-4">
+                    <div class="bg-white rounded-xl shadow-lg p-4 mb-6">
+                        <h2 class="text-xl font-bold mb-4">नया रिक्वेस्ट</h2>
+                        <div class="space-y-4">
+                            <select onchange="updateRequestData('area', this.value)" class="w-full px-4 py-3 border rounded-lg">
+                                <option value="">अपना area चुनें</option>
+                                ${areas.map(a => `<option value="${a}">${a}</option>`).join('')}
+                            </select>
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                ${categories.map(cat => `
+                                    <button onclick="selectCategory('${cat.name}', ${cat.basePrice})" class="p-3 rounded-xl border-2 ${state.requestData.category === cat.name ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200'}">
+                                        <div class="text-3xl mb-2">${cat.icon}</div>
+                                        <p class="text-xs font-medium">${cat.name}</p>
+                                        <p class="text-xs text-green-600">₹${cat.basePrice}+</p>
+                                    </button>
+                                `).join('')}
                             </div>
-                            <div>
-                                <label class="block text-gray-700 font-medium mb-3">सर्विस कैटेगरी</label>
-                                <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-                                    ${categories.map(cat => `
-                                        <button onclick="selectCategory('${cat.name}', ${cat.basePrice})" class="p-3 md:p-4 rounded-xl border-2 ${state.requestData.category === cat.name ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200'}">
-                                            <div class="text-3xl md:text-4xl mb-2">${cat.icon}</div>
-                                            <p class="text-xs md:text-sm font-medium">${cat.name}</p>
-                                            <p class="text-xs text-green-600">₹${cat.basePrice}+</p>
-                                        </button>
-                                    `).join('')}
-                                </div>
-                            </div>
-                            ${state.requestData.estimatedPrice ? `
-                                <div class="bg-green-50 border border-green-200 rounded-lg p-4">
-                                    <p class="text-sm text-gray-600">अनुमानित कीमत:</p>
-                                    <p class="text-2xl font-bold text-green-600">₹${state.requestData.estimatedPrice}</p>
-                                </div>
-                            ` : ''}
-                            <div>
-                                <label class="block text-gray-700 font-medium mb-2">काम का विवरण</label>
-                                <textarea onchange="updateRequestData('description', this.value)" class="w-full px-4 py-3 border rounded-lg" rows="4" placeholder="विस्तार से बताएं...">${state.requestData.description}</textarea>
-                            </div>
-                            <div>
-                                <label class="block text-gray-700 font-medium mb-2">फोटो</label>
-                                <input type="file" accept="image/*" onchange="handleImageUpload(event)" class="w-full px-4 py-3 border rounded-lg">
-                                ${state.requestData.photo ? `<img src="${state.requestData.photo}" class="mt-4 max-w-xs rounded-lg">` : ''}
-                            </div>
-                            <button onclick="handleRequest()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-4 rounded-lg">रिक्वेस्ट भेजें</button>
+                            ${state.requestData.estimatedPrice ? `<div class="bg-green-50 p-3 rounded"><p class="text-sm">अनुमानित: <strong class="text-xl">₹${state.requestData.estimatedPrice}</strong></p></div>` : ''}
+                            <textarea onchange="updateRequestData('description', this.value)" class="w-full px-4 py-3 border rounded-lg" rows="3" placeholder="काम का विवरण"></textarea>
+                            <input type="file" accept="image/*" onchange="handleImageUpload(event)" class="w-full px-4 py-3 border rounded-lg">
+                            ${state.requestData.photo ? `<img src="${state.requestData.photo}" class="max-w-xs rounded-lg">` : ''}
+                            <button onclick="handleRequest()" class="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold">रिक्वेस्ट भेजें</button>
                         </div>
                     </div>
                     ${state.requestData.category && state.requestData.area ? `
-                        <div class="bg-white rounded-xl shadow-lg p-4 md:p-6">
-                            <h2 class="text-xl md:text-2xl font-bold mb-4">${state.requestData.area} में उपलब्ध मिस्त्री</h2>
-                            ${filteredWorkers.length === 0 ? 
-                                '<p class="text-center py-8 text-gray-600">इस area में कोई मिस्त्री उपलब्ध नहीं। कृपया दूसरा area चुनें।</p>' :
-                                `<div class="grid md:grid-cols-2 gap-4">
+                        <div class="bg-white rounded-xl shadow-lg p-4">
+                            <h2 class="text-xl font-bold mb-4">${state.requestData.area} में मिस्त्री</h2>
+                            ${filteredWorkers.length === 0 ? '<p class="text-center py-4">कोई मिस्त्री नहीं</p>' : `
+                                <div class="space-y-4">
                                     ${filteredWorkers.map(w => `
-                                        <div class="border rounded-lg p-4 hover:shadow-lg transition">
-                                            <div class="flex justify-between mb-3">
+                                        <div class="border rounded-lg p-4">
+                                            <div class="flex justify-between mb-2">
                                                 <div>
-                                                    <h3 class="text-lg font-bold flex items-center gap-2">
-                                                        ${w.name}
-                                                        ${w.verified ? '<span class="text-blue-500" title="Verified">✓</span>' : ''}
-                                                    </h3>
-                                                    <p class="text-sm text-gray-600">${w.category}</p>
-                                                    <p class="text-sm text-gray-500">📍 ${w.area}</p>
-                                                    <div class="flex gap-1 mt-1">
-                                                        <span class="text-yellow-400">⭐</span>
-                                                        <span class="text-sm font-medium">${w.rating.toFixed(1)}</span>
-                                                        <span class="text-xs text-gray-500">(${w.totalReviews})</span>
-                                                    </div>
+                                                    <h3 class="font-bold">${w.name} ${w.verified ? '✓' : ''}</h3>
+                                                    <p class="text-sm text-gray-600">${w.category} - ${w.area}</p>
+                                                    <p class="text-sm">⭐ ${w.rating.toFixed(1)} (${w.totalReviews})</p>
                                                 </div>
-                                                <p class="text-sm text-indigo-600 font-medium">${w.experience} साल</p>
+                                                <p class="text-sm text-indigo-600">${w.experience} साल</p>
                                             </div>
                                             <div class="flex gap-2">
-                                                <a href="tel:${w.phone}" class="flex-1 bg-green-500 text-white py-3 rounded-lg text-center text-sm">📞 कॉल</a>
-                                                <button onclick="showPaymentScreen(${w.id}, '${w.name}')" class="flex-1 bg-indigo-500 text-white py-3 rounded-lg text-sm">💳 पेमेंट</button>
+                                                <a href="tel:${w.phone}" class="flex-1 bg-green-500 text-white py-2 rounded text-center text-sm">📞 कॉल</a>
+                                                <button onclick="showPaymentScreen(${w.id}, '${w.name}')" class="flex-1 bg-indigo-500 text-white py-2 rounded text-sm">💳 पेमेंट</button>
                                             </div>
                                         </div>
                                     `).join('')}
-                                </div>`
-                            }
+                                </div>
+                            `}
                         </div>
                     ` : ''}
                 </div>
@@ -327,28 +276,25 @@
                 <header class="bg-green-600 text-white p-4">
                     <div class="flex justify-between items-center">
                         <div>
-                            <h1 class="text-xl md:text-2xl font-bold">🔧 मिस्त्री Dashboard</h1>
-                            <p class="text-sm">${state.currentUser.category} - ${state.currentUser.area}</p>
+                            <h1 class="text-xl font-bold">मिस्त्री Dashboard</h1>
+                            <p class="text-sm">${state.currentUser.category}</p>
                         </div>
-                        <button onclick="logout()" class="bg-red-500 px-3 py-2 rounded-lg text-sm">लॉगआउट</button>
+                        <button onclick="logout()" class="bg-red-500 px-3 py-2 rounded text-sm">लॉगआउट</button>
                     </div>
                 </header>
-                <div class="max-w-6xl mx-auto p-4 md:p-6">
-                    <div class="bg-white rounded-xl shadow-lg p-4 md:p-6 mb-6">
-                        <h2 class="text-xl font-bold mb-4">प्रोफाइल ${state.currentUser.verified ? '<span class="text-blue-500">✓ Verified</span>' : '<span class="text-red-500">⚠ Pending</span>'}</h2>
-                        <div class="grid md:grid-cols-2 gap-4 mb-6">
-                            <p><strong>नाम:</strong> ${state.currentUser.name}</p>
-                            <p><strong>फोन:</strong> ${state.currentUser.phone}</p>
-                            <p><strong>कैटेगरी:</strong> ${state.currentUser.category}</p>
-                            <p><strong>क्षेत्र:</strong> ${state.currentUser.area}</p>
-                            <p><strong>UPI:</strong> ${state.currentUser.upiId}</p>
-                        </div>
-                        <h3 class="font-bold mb-3">📱 QR Code</h3>
-                        <img src="${generateQRCode(state.currentUser.upiId, state.currentUser.name)}" class="rounded-lg shadow-md w-48">
+                <div class="max-w-6xl mx-auto p-4">
+                    <div class="bg-white rounded-xl shadow-lg p-4 mb-4">
+                        <h2 class="text-xl font-bold mb-2">प्रोफाइल ${state.currentUser.verified ? '✓' : '⚠'}</h2>
+                        <p><strong>नाम:</strong> ${state.currentUser.name}</p>
+                        <p><strong>फोन:</strong> ${state.currentUser.phone}</p>
+                        <p><strong>क्षेत्र:</strong> ${state.currentUser.area}</p>
+                        <p><strong>UPI:</strong> ${state.currentUser.upiId}</p>
+                        <h3 class="font-bold mt-3 mb-2">QR Code</h3>
+                        <img src="${generateQRCode(state.currentUser.upiId, state.currentUser.name)}" class="w-48 rounded-lg">
                     </div>
-                    <div class="bg-white rounded-xl shadow-lg p-4 md:p-6">
-                        <h2 class="text-xl font-bold mb-6">नए रिक्वेस्ट (${myRequests.length})</h2>
-                        ${myRequests.length === 0 ? '<p class="text-center py-8">कोई रिक्वेस्ट नहीं</p>' : myRequests.map(req => `
+                    <div class="bg-white rounded-xl shadow-lg p-4">
+                        <h2 class="text-xl font-bold mb-4">रिक्वेस्ट (${myRequests.length})</h2>
+                        ${myRequests.length === 0 ? '<p class="text-center py-4">कोई रिक्वेस्ट नहीं</p>' : myRequests.map(req => `
                             <div class="border rounded-lg p-4 mb-4">
                                 <div class="flex justify-between mb-2">
                                     <div>
@@ -357,12 +303,12 @@
                                     </div>
                                     <span class="text-xs bg-blue-100 px-2 py-1 rounded">${req.timestamp}</span>
                                 </div>
-                                <p class="my-3">${req.description}</p>
-                                <p class="text-green-600 font-bold mb-2">अनुमानित: ₹${req.estimatedPrice}</p>
-                                ${req.photo ? `<img src="${req.photo}" class="max-w-sm rounded-lg mb-4">` : ''}
+                                <p class="mb-2">${req.description}</p>
+                                <p class="text-green-600 font-bold mb-2">₹${req.estimatedPrice}</p>
+                                ${req.photo ? `<img src="${req.photo}" class="max-w-sm rounded-lg mb-3">` : ''}
                                 <div class="flex gap-2">
-                                    <a href="tel:${req.customerPhone}" class="flex-1 bg-green-500 text-white py-3 rounded-lg text-center">📞 कॉल</a>
-                                    <button onclick="viewSlip('${req.requestId}')" class="flex-1 bg-indigo-500 text-white py-3 rounded-lg">📄 Slip देखें</button>
+                                    <a href="tel:${req.customerPhone}" class="flex-1 bg-green-500 text-white py-2 rounded text-center">📞 कॉल</a>
+                                    <button onclick="viewSlip('${req.requestId}')" class="flex-1 bg-indigo-500 text-white py-2 rounded">📄 Slip</button>
                                 </div>
                             </div>
                         `).join('')}
@@ -376,56 +322,43 @@
         return `
             <div class="min-h-screen bg-gray-50">
                 <header class="bg-red-600 text-white p-4">
-                    <div class="flex justify-between items-center max-w-7xl mx-auto">
-                        <h1 class="text-2xl font-bold">👨‍💼 Admin Panel</h1>
-                        <button onclick="logout()" class="bg-white text-red-600 px-4 py-2 rounded-lg font-semibold">Logout</button>
+                    <div class="flex justify-between items-center">
+                        <h1 class="text-xl font-bold">👨‍💼 Admin Panel</h1>
+                        <button onclick="logout()" class="bg-white text-red-600 px-4 py-2 rounded font-semibold">Logout</button>
                     </div>
                 </header>
-                <div class="max-w-7xl mx-auto p-6">
+                <div class="max-w-7xl mx-auto p-4">
                     <div class="grid md:grid-cols-4 gap-4 mb-6">
-                        <div class="bg-white p-6 rounded-xl shadow-lg">
-                            <h3 class="text-gray-600 text-sm">Total Workers</h3>
-                            <p class="text-3xl font-bold text-indigo-600">${state.workers.length}</p>
-                        </div>
-                        <div class="bg-white p-6 rounded-xl shadow-lg">
-                            <h3 class="text-gray-600 text-sm">Total Customers</h3>
-                            <p class="text-3xl font-bold text-green-600">${state.customers.length}</p>
-                        </div>
-                        <div class="bg-white p-6 rounded-xl shadow-lg">
-                            <h3 class="text-gray-600 text-sm">Total Requests</h3>
-                            <p class="text-3xl font-bold text-blue-600">${state.requests.length}</p>
-                        </div>
-                        <div class="bg-white p-6 rounded-xl shadow-lg">
-                            <h3 class="text-gray-600 text-sm">Pending Approvals</h3>
-                            <p class="text-3xl font-bold text-orange-600">${state.workers.filter(w => !w.verified).length}</p>
-                        </div>
+                        <div class="bg-white p-4 rounded-xl shadow"><h3 class="text-sm text-gray-600">Workers</h3><p class="text-2xl font-bold text-indigo-600">${state.workers.length}</p></div>
+                        <div class="bg-white p-4 rounded-xl shadow"><h3 class="text-sm text-gray-600">Customers</h3><p class="text-2xl font-bold text-green-600">${state.customers.length}</p></div>
+                        <div class="bg-white p-4 rounded-xl shadow"><h3 class="text-sm text-gray-600">Requests</h3><p class="text-2xl font-bold text-blue-600">${state.requests.length}</p></div>
+                        <div class="bg-white p-4 rounded-xl shadow"><h3 class="text-sm text-gray-600">Pending</h3><p class="text-2xl font-bold text-orange-600">${state.workers.filter(w => !w.verified).length}</p></div>
                     </div>
-                    
-                    <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
-                        <h2 class="text-2xl font-bold mb-4">👷 All Workers</h2>
+                    <div class="bg-white rounded-xl shadow-lg p-4 mb-4">
+                        <h2 class="text-xl font-bold mb-4">Workers</h2>
                         <div class="overflow-x-auto">
-                            <table class="w-full">
+                            <table class="w-full text-sm">
                                 <thead class="bg-gray-100">
                                     <tr>
-                                        <th class="p-3 text-left">Name</th>
-                                        <th class="p-3 text-left">Phone</th>
-                                        <th class="p-3 text-left">Category</th>
-                                        <th class="p-3 text-left">Area</th>
-                                        <th class="p-3 text-left">Status</th>
-                                        <th class="p-3 text-left">Action</th>
+                                        <th class="p-2 text-left">Name</th>
+                                        <th class="p-2 text-left">Phone</th>
+                                        <th class="p-2 text-left">Category</th>
+                                        <th class="p-2 text-left">Area</th>
+                                        <th class="p-2 text-left">Status</th>
+                                        <th class="p-2 text-left">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     ${state.workers.map(w => `
                                         <tr class="border-b">
-                                            <td class="p-3">${w.name}</td>
-                                            <td class="p-3">${w.phone}</td>
-                                            <td class="p-3">${w.category}</td>
-                                            <td class="p-3">${w.area}</td>
-                                            <td class="p-3">${w.verified ? '<span class="text-green-600">✓ Verified</span>' : '<span class="text-orange-600">⏳ Pending</span>'}</td>
-                                            <td class="p-3">
-                                                ${!w.verified ? `<button onclick="approveWorker(${w.id})" class="bg-green-500 text-white px-3 py-1 rounded text-sm">Approve</button>` : ''}
-                                                <button onclick="deleteWorker(${w.id})" class="bg-red-500 text-white px-3 py-1 rounded text-sm ml-2">Delete</button>
+                                            <td class="p-2">${w.name}</td>
+                                            <td class="p-2">${w.phone}</td>
+                                            <td class="p-2">${w.category}</td>
+                                            <td class="p-2">${w.area}</td>
+                                            <td class="p-2">${w.verified ? '<span class="text-green-600">✓ Verified</span>' : '<span class="text-orange-600">⏳ Pending</span>'}</td>
+                                            <td class="p-2">
+                                                ${!w.verified ? `<button onclick="approveWorker(${w.id})" class="bg-green-500 text-white px-2 py-1 rounded text-xs mr-1">Approve</button>` : ''}
+                                                <button onclick="deleteWorker(${w.id})" class="bg-red-500 text-white px-2 py-1 rounded text-xs">Delete</button>
                                             </td>
                                         </tr>
                                     `).join('')}
@@ -433,47 +366,18 @@
                             </table>
                         </div>
                     </div>
-
-                    <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
-                        <h2 class="text-2xl font-bold mb-4">👥 All Customers</h2>
-                        <div class="overflow-x-auto">
-                            <table class="w-full">
-                                <thead class="bg-gray-100">
-                                    <tr>
-                                        <th class="p-3 text-left">Name</th>
-                                        <th class="p-3 text-left">Phone</th>
-                                        <th class="p-3 text-left">Area</th>
-                                        <th class="p-3 text-left">Total Requests</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${state.customers.map(c => `
-                                        <tr class="border-b">
-                                            <td class="p-3">${c.name}</td>
-                                            <td class="p-3">${c.phone}</td>
-                                            <td class="p-3">${c.area}</td>
-                                            <td class="p-3">${state.requests.filter(r => r.customerId === c.id).length}</td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
-                            </div>
-                    </div>
-
-                    <div class="bg-white rounded-xl shadow-lg p-6">
-                        <h2 class="text-2xl font-bold mb-4">📋 All Requests</h2>
-                        <div class="space-y-4">
+                    <div class="bg-white rounded-xl shadow-lg p-4">
+                        <h2 class="text-xl font-bold mb-4">All Requests</h2>
+                        <div class="space-y-3">
                             ${state.requests.map(req => `
-                                <div class="border rounded-lg p-4">
-                                    <div class="flex justify-between mb-2">
-                                        <div>
-                                            <p class="font-bold">${req.requestId}</p>
-                                            <p class="text-sm text-gray-600">${req.customerName} → ${req.category}</p>
-                                        </div>
-                                        <span class="text-xs bg-blue-100 px-3 py-1 rounded">${req.timestamp}</span>
+                                <div class="border rounded-lg p-3">
+                                    <div class="flex justify-between mb-1">
+                                        <p class="font-bold text-sm">${req.requestId}</p>
+                                        <span class="text-xs bg-blue-100 px-2 py-1 rounded">${req.timestamp}</span>
                                     </div>
-                                    <p class="text-sm mb-2">${req.description}</p>
-                                    <div class="flex gap-2 text-sm">
+                                    <p class="text-sm">${req.customerName} → ${req.category}</p>
+                                    <p class="text-xs text-gray-600">${req.description}</p>
+                                    <div class="flex gap-2 mt-2 text-xs">
                                         <span class="bg-green-100 px-2 py-1 rounded">₹${req.estimatedPrice}</span>
                                         <span class="bg-purple-100 px-2 py-1 rounded">📍 ${req.area}</span>
                                     </div>
@@ -488,91 +392,58 @@
 
     function renderRequestSlip() {
         const req = state.requests.find(r => r.requestId === state.showSlip);
-        if (!req) return '<p>Request not found</p>';
-
+        if (!req) return '<p>Not found</p>';
         const worker = state.workers.find(w => w.category === req.category && w.area === req.workerArea);
-
         return `
             <div class="min-h-screen bg-gray-100 p-4 flex items-center justify-center">
-                <div class="bg-white max-w-2xl w-full rounded-xl shadow-2xl overflow-hidden">
+                <div class="bg-white max-w-2xl w-full rounded-xl shadow-2xl">
                     <div class="print-area">
                         <div class="bg-indigo-600 text-white p-6 text-center">
-                            <h1 class="text-3xl font-bold mb-2">घर सेवा ऐप</h1>
-                            <p class="text-sm">Work Request Slip</p>
+                            <h1 class="text-3xl font-bold">घर सेवा ऐप</h1>
+                            <p>Work Request Slip</p>
                         </div>
-                        
-                        <div class="p-8">
-                            <div class="text-center mb-6">
-                                <div class="inline-block bg-yellow-100 px-4 py-2 rounded-lg">
-                                    <p class="text-sm text-gray-600">Request ID</p>
-                                    <p class="text-2xl font-bold text-gray-800">${req.requestId}</p>
+                        <div class="p-6">
+                            <div class="text-center mb-4">
+                                <div class="inline-block bg-yellow-100 px-4 py-2 rounded">
+                                    <p class="text-sm">Request ID</p>
+                                    <p class="text-2xl font-bold">${req.requestId}</p>
                                 </div>
                             </div>
-
-                            <div class="grid md:grid-cols-2 gap-6 mb-6">
-                                <div class="border-2 border-indigo-200 rounded-lg p-4">
-                                    <h3 class="font-bold text-indigo-600 mb-3 flex items-center gap-2">
-                                        👤 Customer Details
-                                    </h3>
-                                    <div class="space-y-2 text-sm">
-                                        <p><strong>Name:</strong> ${req.customerName}</p>
-                                        <p><strong>Phone:</strong> ${req.customerPhone}</p>
-                                        <p><strong>Area:</strong> ${req.area}</p>
-                                    </div>
+                            <div class="grid md:grid-cols-2 gap-4 mb-4">
+                                <div class="border-2 border-indigo-200 rounded-lg p-3">
+                                    <h3 class="font-bold text-indigo-600 mb-2">👤 Customer</h3>
+                                    <p class="text-sm"><strong>Name:</strong> ${req.customerName}</p>
+                                    <p class="text-sm"><strong>Phone:</strong> ${req.customerPhone}</p>
+                                    <p class="text-sm"><strong>Area:</strong> ${req.area}</p>
                                 </div>
-
                                 ${worker ? `
-                                    <div class="border-2 border-green-200 rounded-lg p-4">
-                                        <h3 class="font-bold text-green-600 mb-3 flex items-center gap-2">
-                                            🔧 Worker Details
-                                        </h3>
-                                        <div class="space-y-2 text-sm">
-                                            <p><strong>Name:</strong> ${worker.name}</p>
-                                            <p><strong>Phone:</strong> ${worker.phone}</p>
-                                            <p><strong>Category:</strong> ${worker.category}</p>
-                                            <p><strong>Experience:</strong> ${worker.experience} years</p>
-                                        </div>
+                                    <div class="border-2 border-green-200 rounded-lg p-3">
+                                        <h3 class="font-bold text-green-600 mb-2">🔧 Worker</h3>
+                                        <p class="text-sm"><strong>Name:</strong> ${worker.name}</p>
+                                        <p class="text-sm"><strong>Phone:</strong> ${worker.phone}</p>
+                                        <p class="text-sm"><strong>Category:</strong> ${worker.category}</p>
                                     </div>
                                 ` : ''}
                             </div>
-
-                            <div class="bg-gray-50 rounded-lg p-4 mb-6">
-                                <h3 class="font-bold mb-3">📋 Work Details</h3>
-                                <div class="space-y-2 text-sm">
-                                    <p><strong>Category:</strong> ${req.category}</p>
-                                    <p><strong>Description:</strong> ${req.description}</p>
-                                    <p><strong>Date & Time:</strong> ${req.timestamp}</p>
+                            <div class="bg-gray-50 rounded-lg p-3 mb-4
+                            <div class="bg-gray-50 rounded-lg p-3 mb-4">
+                                <h3 class="font-bold mb-2">📋 Work Details</h3>
+                                <p class="text-sm"><strong>Category:</strong> ${req.category}</p>
+                                <p class="text-sm"><strong>Description:</strong> ${req.description}</p>
+                                <p class="text-sm"><strong>Date:</strong> ${req.timestamp}</p>
+                            </div>
+                            <div class="bg-green-50 border-2 border-green-300 rounded-lg p-3">
+                                <div class="flex justify-between">
+                                    <span class="font-semibold">Estimated Price:</span>
+                                    <span class="text-2xl font-bold text-green-600">₹${req.estimatedPrice}</span>
                                 </div>
                             </div>
-
-                            <div class="bg-green-50 border-2 border-green-300 rounded-lg p-4 mb-6">
-                                <div class="flex justify-between items-center">
-                                    <span class="text-lg font-semibold">Estimated Price:</span>
-                                    <span class="text-3xl font-bold text-green-600">₹${req.estimatedPrice}</span>
-                                </div>
-                                <p class="text-xs text-gray-500 mt-2">*Final price may vary based on work complexity</p>
-                            </div>
-
-                            ${req.photo ? `
-                                <div class="mb-6">
-                                    <h3 class="font-bold mb-3">📷 Work Photo</h3>
-                                    <img src="${req.photo}" class="rounded-lg shadow-md max-w-full">
-                                </div>
-                            ` : ''}
-
-                            <div class="border-t pt-4 mt-6">
-                                <p class="text-xs text-gray-500 text-center">
-                                    This is a computer-generated slip. No signature required.<br>
-                                    For support: +91-1234567890 | support@gharseva.com
-                                </p>
-                            </div>
+                            ${req.photo ? `<div class="mt-4"><img src="${req.photo}" class="rounded-lg max-w-full"></div>` : ''}
                         </div>
                     </div>
-
-                    <div class="bg-gray-100 p-4 flex gap-3 print:hidden">
-                        <button onclick="window.print()" class="flex-1 bg-indigo-600 text-white py-3 rounded-lg font-semibold">🖨️ Print</button>
-                        <button onclick="downloadSlip()" class="flex-1 bg-green-600 text-white py-3 rounded-lg font-semibold">📥 Download</button>
-                        <button onclick="closeSlip()" class="flex-1 bg-gray-600 text-white py-3 rounded-lg font-semibold">✕ Close</button>
+                    <div class="bg-gray-100 p-4 flex gap-2 print:hidden">
+                        <button onclick="window.print()" class="flex-1 bg-indigo-600 text-white py-2 rounded font-semibold">🖨️ Print</button>
+                        <button onclick="closeSlip()" class="flex-1 bg-gray-600 text-white py-2 rounded font-semibold">✕ Close</button>
                     </div>
                 </div>
             </div>
@@ -583,22 +454,22 @@
         const worker = state.workers.find(w => w.id === state.showPayment.workerId);
         return `
             <div class="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-                <div class="bg-white rounded-2xl shadow-2xl p-6 md:p-8 max-w-md w-full">
-                    <h2 class="text-2xl font-bold mb-6 text-center">💳 Payment</h2>
-                    <div class="bg-indigo-50 rounded-lg p-4 mb-4">
+                <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
+                    <h2 class="text-2xl font-bold mb-4 text-center">💳 Payment</h2>
+                    <div class="bg-indigo-50 rounded-lg p-3 mb-4">
                         <p class="font-medium">${worker.name}</p>
                         <p class="text-sm">${worker.category}</p>
                     </div>
                     <div class="mb-4">
                         <label class="block font-medium mb-2">Amount (₹)</label>
-                        <input type="number" id="paymentAmount" onchange="updatePaymentData('amount', this.value)" class="w-full px-4 py-3 border rounded-lg" placeholder="500">
+                        <input type="number" onchange="updatePaymentData('amount', this.value)" class="w-full px-4 py-3 border rounded-lg" placeholder="500">
                     </div>
                     <div class="bg-gray-50 p-4 rounded-lg mb-4 text-center">
                         <p class="text-sm mb-3">Scan QR Code</p>
                         <img src="${generateQRCode(worker.upiId, worker.name, state.paymentData.amount)}" class="mx-auto rounded-lg">
                         <p class="text-sm mt-3">UPI: <strong>${worker.upiId}</strong></p>
                     </div>
-                    <button onclick="handlePayment()" class="w-full bg-green-600 text-white py-3 rounded-lg mb-3">Payment Done</button>
+                    <button onclick="handlePayment()" class="w-full bg-green-600 text-white py-3 rounded-lg mb-2">Payment Done</button>
                     <button onclick="closePayment()" class="w-full bg-gray-200 py-3 rounded-lg">Back</button>
                 </div>
             </div>
@@ -608,10 +479,10 @@
     function renderFeedbackScreen() {
         return `
             <div class="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-                <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
-                    <h2 class="text-2xl font-bold mb-6 text-center">⭐ Feedback</h2>
-                    <p class="text-center font-medium mb-6">${state.showFeedback.workerName}</p>
-                    <div class="mb-6">
+                <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
+                    <h2 class="text-2xl font-bold mb-4 text-center">⭐ Feedback</h2>
+                    <p class="text-center font-medium mb-4">${state.showFeedback.workerName}</p>
+                    <div class="mb-4">
                         <label class="block font-medium mb-3 text-center">Rating</label>
                         <div class="flex justify-center gap-2">
                             ${[1,2,3,4,5].map(s => `
@@ -619,30 +490,57 @@
                             `).join('')}
                         </div>
                     </div>
-                    <div class="mb-6">
+                    <div class="mb-4">
                         <label class="block font-medium mb-2">Comment</label>
                         <textarea onchange="updateFeedbackData('comment', this.value)" class="w-full px-4 py-3 border rounded-lg" rows="4"></textarea>
                     </div>
-                    <button onclick="submitFeedback()" class="w-full bg-indigo-600 text-white py-3 rounded-lg mb-3">Submit</button>
+                    <button onclick="submitFeedback()" class="w-full bg-indigo-600 text-white py-3 rounded-lg mb-2">Submit</button>
                     <button onclick="closeFeedback()" class="w-full bg-gray-200 py-3 rounded-lg">Later</button>
                 </div>
             </div>
         `;
     }
 
-    // Functions
     function selectUserType(type) { state.userType = type; render(); }
-    function resetUserType() { state.userType = null; state.adminLogin = { username: '', password: '' }; render(); }
+    function resetUserType() { 
+        state.userType = null; 
+        state.adminLogin = { phone: '', otp: '', otpSent: false }; 
+        generatedOTP = null;
+        render(); 
+    }
     function updateFormData(field, value) { state.formData[field] = value; }
     function updateAdminLogin(field, value) { state.adminLogin[field] = value; }
     
-    function handleAdminLogin() {
-        if (state.adminLogin.username === ADMIN_USERNAME && state.adminLogin.password === ADMIN_PASSWORD) {
+    function sendOTP() {
+        if (state.adminLogin.phone !== ADMIN_PHONE) {
+            alert('Invalid phone number!');
+            return;
+        }
+        generatedOTP = Math.floor(1000 + Math.random() * 9000).toString();
+        otpGeneratedTime = Date.now();
+        state.adminLogin.otpSent = true;
+        alert(`OTP: ${generatedOTP}`);
+        render();
+    }
+    
+    function verifyOTP() {
+        const otpAge = (Date.now() - otpGeneratedTime) / 1000 / 60;
+        if (otpAge > 5) {
+            alert('OTP expired!');
+            state.adminLogin.otpSent = false;
+            generatedOTP = null;
+            render();
+            return;
+        }
+        if (state.adminLogin.otp === generatedOTP) {
             state.isAdmin = true;
             state.isLoggedIn = true;
+            state.currentUser = { name: 'Admin', phone: ADMIN_PHONE };
+            state.adminLogin = { phone: '', otp: '', otpSent: false };
+            generatedOTP = null;
             render();
         } else {
-            alert('Invalid credentials!');
+            alert('Invalid OTP!');
         }
     }
 
@@ -650,7 +548,6 @@
         if (!state.formData.name || !state.formData.phone || !state.formData.area) {
             return alert('सभी फील्ड भरें');
         }
-        
         if (state.userType === 'worker') {
             if (!state.formData.category || !state.formData.upiId) return alert('सभी फील्ड भरें');
             state.currentUser = { 
@@ -693,7 +590,6 @@
         if (!state.requestData.category || !state.requestData.description || !state.requestData.area) {
             return alert('कैटेगरी, area और विवरण भरें');
         }
-
         const requestId = generateRequestId();
         const newRequest = {
             id: Date.now(),
@@ -706,25 +602,16 @@
             timestamp: new Date().toLocaleString('hi-IN'),
             status: 'pending'
         };
-        
         state.requests.push(newRequest);
         state.showSlip = requestId;
         render();
     }
 
-    function viewSlip(requestId) {
-        state.showSlip = requestId;
-        render();
-    }
-
-    function closeSlip() {
-        state.showSlip = null;
+    function viewSlip(requestId) { state.showSlip = requestId; render(); }
+    function closeSlip() { 
+        state.showSlip = null; 
         state.requestData = { category: '', description: '', photo: null, area: '', estimatedPrice: '' };
-        render();
-    }
-
-    function downloadSlip() {
-        alert('Download feature - आप इस slip को screenshot ले सकते हैं या print कर सकते हैं');
+        render(); 
     }
 
     function showPaymentScreen(id, name) { state.showPayment = { workerId: id, workerName: name }; render(); }
@@ -760,7 +647,7 @@
             state.workers[idx].rating = state.workers[idx].reviews.reduce((a,r) => a + r.rating, 0) / state.workers[idx].reviews.length;
             state.workers[idx].totalReviews = state.workers[idx].reviews.length;
         }
-        alert('फीडबैक submit हो गया!');
+        alert('फीडबैक submit!');
         state.showFeedback = null;
         state.feedbackData = { rating: 0, comment: '' };
         render();
@@ -778,22 +665,22 @@
     }
 
     function deleteWorker(id) {
-        if (confirm('Are you sure you want to delete this worker?')) {
+        if (confirm('Delete worker?')) {
             state.workers = state.workers.filter(w => w.id !== id);
             render();
         }
     }
 
     function logout() { 
-        state = { 
-            ...state, 
-            isLoggedIn: false, 
-            userType: null, 
-            currentUser: null,
-            isAdmin: false,
-            requestData: { category: '', description: '', photo: null, area: '', estimatedPrice: '' }
-        }; 
+        state.isLoggedIn = false; 
+        state.userType = null; 
+        state.currentUser = null;
+        state.isAdmin = false;
+        state.requestData = { category: '', description: '', photo: null, area: '', estimatedPrice: '' };
         render(); 
     }
 
-  
+    render();
+</script>
+</body>
+</html>
