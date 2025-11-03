@@ -1,505 +1,799 @@
-<!doctype html>
+बिल्कुल! यहाँ पूरा updated code है:
+<!DOCTYPE html>
 <html lang="hi">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>घर सेवा - Mistri Ji (Updated)</title>
-  <meta name="description" content="घर सेवा - मिस्त्री/ग्राहक, UPI पेमेंट, फोटो अपलोड, लोकेशन, Admin" />
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-  <style>
-    body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
-    .fade-in { animation: fadein .6s ease both; }
-    @keyframes fadein { from { opacity:0; transform: translateY(6px) } to { opacity:1; transform: none } }
-    .star { cursor:pointer; transition: transform .15s }
-    .star:hover { transform: scale(1.12) }
-    /* small responsive tweaks */
-    @media (max-width:640px){ .container{ padding:12px } }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>घर सेवा ऐप - Admin Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .hidden { display: none !important; }
+        .star { cursor: pointer; transition: all 0.2s; }
+        .star:hover { transform: scale(1.1); }
+        @media print {
+            body * { visibility: hidden; }
+            .print-area, .print-area * { visibility: visible; }
+            .print-area { position: absolute; left: 0; top: 0; width: 100%; }
+        }
+    </style>
 </head>
 <body class="bg-gray-50">
-<!--
-  IMPORTANT: Replace placeholders in the script section:
-  - REPLACE_WEB_APP_URL
-  - REPLACE_CLOUDINARY_UPLOAD_URL
-  - REPLACE_UPI_ID
-  - (Optional) REPLACE_FIREBASE_CONFIG object for real OTP login
--->
 
-<div id="app" class="min-h-screen"></div>
+<div id="app"></div>
 
 <script>
-/* ---------------------------
-   CONFIG — EDIT THESE VALUES
-   --------------------------- */
-const CONFIG = {
-  WEB_APP_URL: "REPLACE_WEB_APP_URL",                      // Google Apps Script web app POST/GET endpoint
-  CLOUDINARY_UPLOAD_URL: "REPLACE_CLOUDINARY_UPLOAD_URL",  // e.g. https://api.cloudinary.com/v1_1/<cloud_name>/image/upload
-  CLOUDINARY_UPLOAD_PRESET: "unsigned_preset_if_any",      // if using unsigned preset; otherwise send via signed server
-  UPI_ID: "REPLACE_UPI_ID",                               // your UPI id e.g. 8218197964@ybl
-  ADMIN_ALLOWED_PHONE: "+918218197964",                   // admin phone locked (for Firebase OTP)
-  ADMIN_FALLBACK_PIN: "1234",                             // local fallback PIN for quick testing
-  APP_NAME: "घर सेवा - Mistri Ji"
-};
-/* ---------------------------
-   END CONFIG
-   --------------------------- */
+    // Admin credentials
+    const ADMIN_USERNAME = 'admin';
+    const ADMIN_PASSWORD = 'admin123';
 
-/* Simple i18n labels (hi/en) */
-const i18n = {
-  hi: {
-    welcome: "घर सेवा ऐप",
-    choose: "कृपया बताएं — आप कौन हैं?",
-    customer: "मैं ग्राहक हूँ",
-    worker: "मैं मिस्त्री हूँ",
-    register: "रजिस्टर करें",
-    submit: "सबमिट करें",
-    pay: "₹ भुगतान करें",
-    uploadPhoto: "फोटो अपलोड करें",
-    locationFetch: "लोकेशन लीजिये",
-    adminLogin: "Admin लॉगिन",
-    logout: "लॉगआउट",
-    requestSent: "रिक्वेस्ट भेज दी गयी।",
-    fillAll: "कृपया सभी आवश्यक फ़ील्ड भरें"
-  },
-  en: {
-    welcome: "Ghar Seva App",
-    choose: "Tell us — who are you?",
-    customer: "I'm Customer",
-    worker: "I'm Worker",
-    register: "Register",
-    submit: "Submit",
-    pay: "Pay ₹",
-    uploadPhoto: "Upload Photo",
-    locationFetch: "Get Location",
-    adminLogin: "Admin Login",
-    logout: "Logout",
-    requestSent: "Request submitted",
-    fillAll: "Please fill all required fields"
-  }
-};
+    // Available areas
+    const areas = [
+        'लाजपत नगर', 'राजौरी गार्डन', 'द्वारका', 'रोहिणी', 'पीतमपुरा',
+        'करोल बाग', 'सरिता विहार', 'नेहरू प्लेस', 'कनॉट प्लेस', 'वसंत कुंज'
+    ];
 
-/* App State */
-let LANG = 'hi';
-let state = {
-  view: 'intro', // intro, choose, register, customerDash, workerDash, admin
-  userType: null,
-  currentUser: null,
-  workers: [
-    { id:1, name:'राजेश कुमार', phone:'9876543210', category:'प्लंबिंग', area:'लाजपत नगर', upi: 'rajesh@paytm', rating:4.5 },
-    { id:2, name:'सुरेश शर्मा', phone:'9876543211', category:'इलेक्ट्रिशियन', area:'राजौरी गार्डन', upi:'suresh@phonepe', rating:4.8 }
-  ],
-  requests: []
-};
+    // State Management
+    let state = {
+        userType: null,
+        isLoggedIn: false,
+        currentUser: null,
+        isAdmin: false,
+        workers: [
+            { 
+                id: 1, 
+                name: 'राजेश कुमार', 
+                phone: '9876543210', 
+                category: 'प्लंबिंग', 
+                experience: '8', 
+                area: 'लाजपत नगर',
+                upiId: 'rajesh@paytm',
+                rating: 4.5,
+                totalReviews: 23,
+                verified: true,
+                reviews: []
+            },
+            { 
+                id: 2, 
+                name: 'सुरेश शर्मा', 
+                phone: '9876543211', 
+                category: 'इलेक्ट्रिशियन', 
+                experience: '12', 
+                area: 'राजौरी गार्डन',
+                upiId: 'suresh@phonepe',
+                rating: 4.8,
+                totalReviews: 45,
+                verified: true,
+                reviews: []
+            }
+        ],
+        customers: [],
+        requests: [],
+        formData: { name: '', phone: '', category: '', experience: '', area: '', upiId: '' },
+        requestData: { category: '', description: '', photo: null, area: '', estimatedPrice: '' },
+        feedbackData: { rating: 0, comment: '' },
+        paymentData: { amount: '', transactionId: '' },
+        showPayment: null,
+        showFeedback: null,
+        showSlip: null,
+        adminLogin: { username: '', password: '' }
+    };
 
-/* ---------------------
-   UTILITIES
-   --------------------- */
-function t(key){ return (i18n[LANG] && i18n[LANG][key]) ? i18n[LANG][key] : key; }
+    const categories = [
+        { name: 'प्लंबिंग', icon: '🚰', basePrice: 300 },
+        { name: 'इलेक्ट्रिशियन', icon: '⚡', basePrice: 400 },
+        { name: 'गैस सिलेंडर', icon: '🔥', basePrice: 200 },
+        { name: 'किचन रिपेयर', icon: '🍳', basePrice: 500 },
+        { name: 'छत/दीवार', icon: '🏠', basePrice: 600 },
+        { name: 'अन्य मिस्त्री', icon: '🔧', basePrice: 350 }
+    ];
 
-function el(html){ const d = document.createElement('div'); d.innerHTML = html; return d.firstElementChild; }
-
-function genQRforUPI(upi,name,amount=''){ 
-  const upiString = `upi://pay?pa=${upi}&pn=${encodeURIComponent(name)}${amount?`&am=${amount}`:''}&cu=INR`;
-  return `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(upiString)}`;
-}
-
-/* ---------------------
-   RENDERING
-   --------------------- */
-function renderIntro(){
-  document.getElementById('app').innerHTML = `
-    <main class="min-h-screen flex items-center justify-center p-6">
-      <div class="max-w-md w-full bg-white rounded-2xl shadow-lg p-6 text-center fade-in">
-        <div class="text-6xl mb-4">🔧</div>
-        <h1 class="text-2xl font-semibold mb-2">${CONFIG.APP_NAME}</h1>
-        <p class="text-sm text-gray-600 mb-6">${t('choose')}</p>
-        <div class="space-y-3">
-          <button onclick="start('customer')" class="w-full py-3 rounded-xl bg-indigo-600 text-white">${t('customer')}</button>
-          <button onclick="start('worker')" class="w-full py-3 rounded-xl bg-green-600 text-white">${t('worker')}</button>
-          <div class="flex gap-2 justify-center mt-3">
-            <button onclick="openAdminLogin()" class="px-3 py-2 bg-gray-200 rounded">${t('adminLogin')}</button>
-            <button onclick="toggleLang()" class="px-3 py-2 bg-gray-200 rounded">EN/हिं</button>
-          </div>
-        </div>
-      </div>
-    </main>
-  `;
-}
-
-function renderRegister(userType){
-  const isWorker = userType === 'worker';
-  document.getElementById('app').innerHTML = `
-    <div class="min-h-screen p-6">
-      <div class="max-w-xl mx-auto">
-        <div class="bg-white p-6 rounded-xl shadow fade-in">
-          <h2 class="text-xl font-semibold mb-3">${isWorker? 'मिस्त्री रजिस्ट्रेशन' : 'ग्राहक रजिस्ट्रेशन'}</h2>
-          <div class="space-y-3">
-            <input id="f_name" placeholder="पूरा नाम" class="w-full p-3 border rounded" />
-            <input id="f_phone" placeholder="मोबाइल नंबर" class="w-full p-3 border rounded" />
-            ${isWorker ? `<input id="f_cat" placeholder="सेवा (Plumber, Electrician)" class="w-full p-3 border rounded" />
-                          <input id="f_upi" placeholder="UPI ID (e.g. your@upi)" class="w-full p-3 border rounded" />` : ''}
-            <div class="flex gap-2">
-              <button onclick="getLocation()" class="p-3 bg-gray-100 rounded">${t('locationFetch')}</button>
-              <div id="locMsg" class="text-sm text-gray-500 self-center"></div>
-            </div>
-            <div>
-              <label class="text-sm font-medium">${t('uploadPhoto')}</label>
-              <input id="f_photo" type="file" accept="image/*" class="w-full mt-2" />
-            </div>
-            <div class="flex gap-2">
-              <button onclick="submitRegister('${userType}')" class="flex-1 p-3 bg-indigo-600 text-white rounded">${t('register')}</button>
-              <button onclick="renderIntro()" class="flex-1 p-3 bg-gray-200 rounded">${t('logout')}</button>
-            </div>
-            <div id="regMsg" class="text-sm text-green-600 mt-2"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-function renderCustomerDashboard(){
-  const categories = [...new Set(state.workers.map(w=>w.category))];
-  document.getElementById('app').innerHTML = `
-    <div class="min-h-screen">
-      <header class="bg-indigo-600 text-white p-4">
-        <div class="max-w-4xl mx-auto flex justify-between items-center">
-          <div class="font-semibold">${CONFIG.APP_NAME}</div>
-          <div class="flex gap-2 items-center">
-            <button onclick="logout()" class="bg-red-500 px-3 py-1 rounded">🚪 ${t('logout')}</button>
-            <button onclick="renderAdminLoginFallback()" class="bg-yellow-200 px-3 py-1 rounded text-sm">Admin</button>
-          </div>
-        </div>
-      </header>
-      <main class="max-w-4xl mx-auto p-4">
-        <section class="bg-white rounded-lg p-4 mb-4">
-          <h3 class="font-semibold mb-2">नया रिक्वेस्ट</h3>
-          <select id="req_cat" class="w-full p-3 border rounded mb-2">
-            <option value="">सेवा चुनें</option>
-            ${categories.map(c=>`<option value="${c}">${c}</option>`).join('')}
-          </select>
-          <textarea id="req_desc" rows="3" class="w-full p-3 border rounded" placeholder="समस्या का विवरण"></textarea>
-          <div class="mt-2">
-            <label class="text-sm">फोटो (optional)</label>
-            <input id="req_photo" type="file" accept="image/*" class="w-full mt-2" />
-          </div>
-          <div class="flex gap-2 mt-3">
-            <button onclick="submitRequest()" class="flex-1 bg-indigo-600 text-white p-3 rounded">${t('submit')}</button>
-            <button onclick="getLocation()" class="flex-1 bg-gray-200 p-3 rounded">${t('locationFetch')}</button>
-          </div>
-          <div id="reqMsg" class="text-sm text-green-600 mt-2"></div>
-        </section>
-
-        <section class="bg-white rounded-lg p-4">
-          <h3 class="font-semibold mb-3">नज़्दीकी मिस्त्री</h3>
-          <div class="grid gap-3 md:grid-cols-2">
-            ${state.workers.map(w => `
-              <div class="border rounded p-3">
-                <div class="flex justify-between items-start">
-                  <div>
-                    <div class="font-semibold">${w.name}</div>
-                    <div class="text-sm text-gray-500">${w.category} • ${w.area}</div>
-                    <div class="text-sm mt-2">UPI: ${w.upi}</div>
-                  </div>
-                  <div class="text-right">
-                    <div class="text-yellow-400 font-bold">${w.rating}</div>
-                    <div class="text-sm"><a href="tel:${w.phone}" class="text-green-600">📞 कॉल</a></div>
-                  </div>
-                </div>
-                <div class="flex gap-2 mt-3">
-                  <button onclick="openPaymentModal(${w.id})" class="flex-1 bg-green-600 p-2 text-white rounded">पेमेंट</button>
-                  <button onclick="openWorkerChat(${w.id})" class="flex-1 bg-blue-200 p-2 rounded">चैट</button>
-                </div>
-              </div>`).join('')}
-          </div>
-        </section>
-      </main>
-    </div>
-  `;
-}
-
-function renderWorkerDashboard(){
-  const me = state.currentUser;
-  const myRequests = state.requests.filter(r=>r.category === me.category);
-  document.getElementById('app').innerHTML = `
-    <div class="min-h-screen">
-      <header class="bg-green-600 text-white p-4">
-        <div class="max-w-4xl mx-auto flex justify-between">
-          <div class="font-semibold">मिस्त्री • ${me.name}</div>
-          <div><button onclick="logout()" class="bg-red-500 px-3 py-1 rounded">🚪 ${t('logout')}</button></div>
-        </div>
-      </header>
-      <main class="max-w-4xl mx-auto p-4">
-        <section class="bg-white p-4 rounded mb-4">
-          <h3 class="font-semibold">आपकी प्रोफ़ाइल</h3>
-          <p>${me.name} • ${me.phone}</p>
-          <p class="text-sm">UPI: ${me.upi}</p>
-          <img src="${genQRforUPI(me.upi, me.name)}" class="h-36 mt-3" />
-        </section>
-
-        <section class="bg-white p-4 rounded">
-          <h3 class="font-semibold">रिक्वेस्ट्स (${myRequests.length})</h3>
-          ${myRequests.length===0?'<p class="text-sm text-gray-500 mt-3">कोई रिक्वेस्ट नहीं</p>':myRequests.map(r=>`
-            <div class="border p-3 rounded mt-3">
-              <div class="flex justify-between">
-                <div><strong>${r.name}</strong><div class="text-sm text-gray-500">${r.phone}</div></div>
-                <div class="text-sm text-gray-500">${r.timestamp}</div>
-              </div>
-              <p class="mt-2">${r.description}</p>
-              ${r.photo ? `<img src="${r.photo}" class="h-40 mt-2 rounded" />` : ''}
-              <div class="mt-2">
-                <a href="tel:${r.phone}" class="bg-green-600 text-white px-3 py-2 rounded">📞 कॉल</a>
-              </div>
-            </div>`).join('')}
-        </section>
-      </main>
-    </div>
-  `;
-}
-
-/* Payment modal / feedback handled inline */
-
-/* ---------------------
-   ACTIONS
-   --------------------- */
-function start(type){
-  state.userType = type;
-  renderRegister(type);
-}
-
-function openAdminLogin(){
-  // open Admin login - use fallback PIN prompt or Firebase OTP if configured
-  renderAdminLoginFallback();
-}
-
-function renderAdminLoginFallback(){
-  const pin = prompt("Enter admin PIN (for quick admin access):");
-  if(pin === CONFIG.ADMIN_FALLBACK_PIN){
-    state.view = 'admin';
-    renderAdminPanel();
-  } else {
-    alert("Wrong PIN. For real OTP login configure Firebase and use that flow.");
-  }
-}
-
-async function submitRegister(type){
-  const name = document.getElementById('f_name').value.trim();
-  const phone = document.getElementById('f_phone').value.trim();
-  const photoInput = document.getElementById('f_photo');
-  const locMsg = document.getElementById('locMsg')?.innerText || '';
-
-  if(!name || !phone){ return alert(t('fillAll')); }
-
-  let uploadedImageUrl = '';
-  if(photoInput && photoInput.files && photoInput.files[0]){
-    try{
-      uploadedImageUrl = await uploadImageToCloudinary(photoInput.files[0]);
-    }catch(err){
-      console.error(err);
-      alert('Image upload failed — continuing without image.');
+    function generateQRCode(upiId, name, amount = '') {
+        const upiString = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(name)}${amount ? `&am=${amount}` : ''}&cu=INR`;
+        return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiString)}`;
     }
-  }
 
-  const payload = {
-    action: type==='worker' ? 'register_worker' : 'register_customer',
-    name, phone,
-    category: type==='worker' ? document.getElementById('f_cat')?.value || '' : '',
-    upi: type==='worker' ? document.getElementById('f_upi')?.value || '' : '',
-    area: locMsg || '',
-    photo: uploadedImageUrl,
-    timestamp: new Date().toLocaleString('hi-IN')
-  };
+    function generateRequestId() {
+        return 'REQ' + Date.now().toString().slice(-8);
+    }
 
-  // local add
-  if(type==='worker'){
-    const newid = Date.now();
-    const newWorker = { id:newid, name:payload.name, phone:payload.phone, category:payload.category||'अन्य', area:payload.area||'', upi:payload.upi||'', rating:0 };
-    state.workers.push(newWorker);
-    state.currentUser = newWorker;
-    state.userType = 'worker';
-    state.view = 'workerDash';
-    renderWorkerDashboard();
-  } else {
-    state.currentUser = { id:Date.now(), name:payload.name, phone:payload.phone };
-    state.userType = 'customer';
-    state.view = 'customerDash';
-    renderCustomerDashboard();
-  }
+    function render() {
+        const app = document.getElementById('app');
+        
+        if (state.showSlip) {
+            app.innerHTML = renderRequestSlip();
+        } else if (state.showPayment) {
+            app.innerHTML = renderPaymentScreen();
+        } else if (state.showFeedback) {
+            app.innerHTML = renderFeedbackScreen();
+        } else if (state.isAdmin) {
+            app.innerHTML = renderAdminDashboard();
+        } else if (!state.userType) {
+            app.innerHTML = renderUserTypeSelection();
+        } else if (!state.isLoggedIn) {
+            app.innerHTML = renderRegistration();
+        } else if (state.userType === 'customer') {
+            app.innerHTML = renderCustomerDashboard();
+        } else if (state.userType === 'worker') {
+            app.innerHTML = renderWorkerDashboard();
+        }
+    }
 
-  // send to backend (Apps Script)
-  try{
-    await postToWebApp(payload);
-  }catch(e){
-    console.warn('webapp post failed', e);
-  }
-}
+    function renderUserTypeSelection() {
+        return `
+            <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+                <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
+                    <div class="text-center mb-8">
+                        <div class="text-6xl mb-4">🔧</div>
+                        <h1 class="text-3xl font-bold text-gray-800 mb-2">घर सेवा ऐप</h1>
+                        <p class="text-gray-600">अपने घर के लिए मिस्त्री ढूंढें</p>
+                    </div>
+                    <div class="space-y-4">
+                        <button onclick="selectUserType('customer')" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-4 px-6 rounded-xl transition duration-300 flex items-center justify-center gap-3 shadow-lg">
+                            <span class="text-2xl">👤</span>
+                            मैं ग्राहक हूं
+                        </button>
+                        <button onclick="selectUserType('worker')" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-4 px-6 rounded-xl transition duration-300 flex items-center justify-center gap-3 shadow-lg">
+                            <span class="text-2xl">🔧</span>
+                            मैं मिस्त्री हूं
+                        </button>
+                        <button onclick="selectUserType('admin')" class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-4 px-6 rounded-xl transition duration-300 flex items-center justify-center gap-3 shadow-lg">
+                            <span class="text-2xl">👨‍💼</span>
+                            Admin Login
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
 
-function logout(){ state.userType=null; state.currentUser=null; state.view='intro'; renderIntro(); }
+    function renderRegistration() {
+        if (state.userType === 'admin') {
+            return `
+                <div class="min-h-screen bg-gradient-to-br from-red-50 to-orange-100 flex items-center justify-center p-4">
+                    <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
+                        <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">🔐 Admin Login</h2>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">Username</label>
+                                <input type="text" id="adminUser" onchange="updateAdminLogin('username', this.value)" class="w-full px-4 py-3 border border-gray-300 rounded-lg" placeholder="admin">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">Password</label>
+                                <input type="password" id="adminPass" onchange="updateAdminLogin('password', this.value)" class="w-full px-4 py-3 border border-gray-300 rounded-lg" placeholder="••••••">
+                            </div>
+                            <button onclick="handleAdminLogin()" class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 rounded-lg">Login</button>
+                            <button onclick="resetUserType()" class="w-full text-gray-600 hover:text-gray-800 py-2">वापस जाएं</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
 
-/* Requests */
-async function submitRequest(){
-  const cat = document.getElementById('req_cat').value;
-  const desc = document.getElementById('req_desc').value.trim();
-  const photoEl = document.getElementById('req_photo');
-  if(!cat || !desc) return alert(t('fillAll'));
+        const isWorker = state.userType === 'worker';
+        return `
+            <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+                <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">
+                        ${isWorker ? 'मिस्त्री रजिस्ट्रेशन' : 'ग्राहक रजिस्ट्रेशन'}
+                    </h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">नाम</label>
+                            <input type="text" id="name" onchange="updateFormData('name', this.value)" class="w-full px-4 py-3 border border-gray-300 rounded-lg" placeholder="अपना नाम">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">फोन नंबर</label>
+                            <input type="tel" id="phone" onchange="updateFormData('phone', this.value)" class="w-full px-4 py-3 border border-gray-300 rounded-lg" placeholder="10 अंक">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">क्षेत्र/इलाका</label>
+                            <select id="area" onchange="updateFormData('area', this.value)" class="w-full px-4 py-3 border border-gray-300 rounded-lg">
+                                <option value="">चुनें</option>
+                                ${areas.map(a => `<option value="${a}">${a}</option>`).join('')}
+                            </select>
+                        </div>
+                        ${isWorker ? `
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">सर्विस कैटेगरी</label>
+                                <select id="category" onchange="updateFormData('category', this.value)" class="w-full px-4 py-3 border border-gray-300 rounded-lg">
+                                    <option value="">चुनें</option>
+                                    ${categories.map(cat => `<option value="${cat.name}">${cat.name}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">अनुभव (वर्ष)</label>
+                                <input type="number" id="experience" onchange="updateFormData('experience', this.value)" class="w-full px-4 py-3 border border-gray-300 rounded-lg" placeholder="5">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">UPI ID <span class="text-red-500">*</span></label>
+                                <input type="text" id="upiId" onchange="updateFormData('upiId', this.value)" class="w-full px-4 py-3 border border-gray-300 rounded-lg" placeholder="name@paytm">
+                            </div>
+                        ` : ''}
+                        <button onclick="handleRegister()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg">रजिस्टर करें</button>
+                        <button onclick="resetUserType()" class="w-full text-gray-600 hover:text-gray-800 py-2">वापस जाएं</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
 
-  let photoUrl = '';
-  if(photoEl && photoEl.files && photoEl.files[0]){
-    try{ photoUrl = await uploadImageToCloudinary(photoEl.files[0]); }catch(e){ console.warn(e); }
-  }
+    function renderCustomerDashboard() {
+        const filteredWorkers = state.workers.filter(w => {
+            const categoryMatch = !state.requestData.category || w.category === state.requestData.category;
+            const areaMatch = !state.requestData.area || w.area === state.requestData.area;
+            return categoryMatch && areaMatch && w.verified;
+        });
 
-  // try get geolocation (best effort)
-  let loc = '';
-  try{
-    const pos = await getCurrentPosition(5000);
-    loc = `${pos.coords.latitude.toFixed(6)},${pos.coords.longitude.toFixed(6)}`;
-  }catch(e){ /* ignore */ }
+        return `
+            <div class="min-h-screen bg-gray-50">
+                <header class="bg-indigo-600 text-white p-4 shadow-lg">
+                    <div class="max-w-6xl mx-auto flex justify-between items-center">
+                        <div class="flex items-center gap-2">
+                            <span class="text-3xl">🔧</span>
+                            <div>
+                                <h1 class="text-xl md:text-2xl font-bold">घर सेवा ऐप</h1>
+                                <p class="text-xs">${state.currentUser.name} - ${state.currentUser.area}</p>
+                            </div>
+                        </div>
+                        <button onclick="logout()" class="bg-red-500 hover:bg-red-600 px-3 py-2 rounded-lg text-sm">🚪 लॉगआउट</button>
+                    </div>
+                </header>
+                <div class="max-w-6xl mx-auto p-4 md:p-6">
+                    <div class="bg-white rounded-xl shadow-lg p-4 md:p-6 mb-6">
+                        <h2 class="text-xl md:text-2xl font-bold text-gray-800 mb-6">नया रिक्वेस्ट भेजें</h2>
+                        <div class="space-y-6">
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-3">अपना इलाका</label>
+                                <select onchange="updateRequestData('area', this.value)" class="w-full px-4 py-3 border border-gray-300 rounded-lg">
+                                    <option value="">अपना area चुनें</option>
+                                    ${areas.map(a => `<option value="${a}" ${state.requestData.area === a ? 'selected' : ''}>${a}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-3">सर्विस कैटेगरी</label>
+                                <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                    ${categories.map(cat => `
+                                        <button onclick="selectCategory('${cat.name}', ${cat.basePrice})" class="p-3 md:p-4 rounded-xl border-2 ${state.requestData.category === cat.name ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200'}">
+                                            <div class="text-3xl md:text-4xl mb-2">${cat.icon}</div>
+                                            <p class="text-xs md:text-sm font-medium">${cat.name}</p>
+                                            <p class="text-xs text-green-600">₹${cat.basePrice}+</p>
+                                        </button>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            ${state.requestData.estimatedPrice ? `
+                                <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                                    <p class="text-sm text-gray-600">अनुमानित कीमत:</p>
+                                    <p class="text-2xl font-bold text-green-600">₹${state.requestData.estimatedPrice}</p>
+                                </div>
+                            ` : ''}
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">काम का विवरण</label>
+                                <textarea onchange="updateRequestData('description', this.value)" class="w-full px-4 py-3 border rounded-lg" rows="4" placeholder="विस्तार से बताएं...">${state.requestData.description}</textarea>
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">फोटो</label>
+                                <input type="file" accept="image/*" onchange="handleImageUpload(event)" class="w-full px-4 py-3 border rounded-lg">
+                                ${state.requestData.photo ? `<img src="${state.requestData.photo}" class="mt-4 max-w-xs rounded-lg">` : ''}
+                            </div>
+                            <button onclick="handleRequest()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-4 rounded-lg">रिक्वेस्ट भेजें</button>
+                        </div>
+                    </div>
+                    ${state.requestData.category && state.requestData.area ? `
+                        <div class="bg-white rounded-xl shadow-lg p-4 md:p-6">
+                            <h2 class="text-xl md:text-2xl font-bold mb-4">${state.requestData.area} में उपलब्ध मिस्त्री</h2>
+                            ${filteredWorkers.length === 0 ? 
+                                '<p class="text-center py-8 text-gray-600">इस area में कोई मिस्त्री उपलब्ध नहीं। कृपया दूसरा area चुनें।</p>' :
+                                `<div class="grid md:grid-cols-2 gap-4">
+                                    ${filteredWorkers.map(w => `
+                                        <div class="border rounded-lg p-4 hover:shadow-lg transition">
+                                            <div class="flex justify-between mb-3">
+                                                <div>
+                                                    <h3 class="text-lg font-bold flex items-center gap-2">
+                                                        ${w.name}
+                                                        ${w.verified ? '<span class="text-blue-500" title="Verified">✓</span>' : ''}
+                                                    </h3>
+                                                    <p class="text-sm text-gray-600">${w.category}</p>
+                                                    <p class="text-sm text-gray-500">📍 ${w.area}</p>
+                                                    <div class="flex gap-1 mt-1">
+                                                        <span class="text-yellow-400">⭐</span>
+                                                        <span class="text-sm font-medium">${w.rating.toFixed(1)}</span>
+                                                        <span class="text-xs text-gray-500">(${w.totalReviews})</span>
+                                                    </div>
+                                                </div>
+                                                <p class="text-sm text-indigo-600 font-medium">${w.experience} साल</p>
+                                            </div>
+                                            <div class="flex gap-2">
+                                                <a href="tel:${w.phone}" class="flex-1 bg-green-500 text-white py-3 rounded-lg text-center text-sm">📞 कॉल</a>
+                                                <button onclick="showPaymentScreen(${w.id}, '${w.name}')" class="flex-1 bg-indigo-500 text-white py-3 rounded-lg text-sm">💳 पेमेंट</button>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>`
+                            }
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }
 
-  const req = {
-    id: Date.now(),
-    name: state.currentUser?.name || 'Guest',
-    phone: state.currentUser?.phone || '',
-    category: cat,
-    description: desc,
-    photo: photoUrl,
-    location: loc,
-    timestamp: new Date().toLocaleString('hi-IN')
-  };
-  state.requests.push(req);
+    function renderWorkerDashboard() {
+        const myRequests = state.requests.filter(r => r.category === state.currentUser.category && r.workerArea === state.currentUser.area);
+        return `
+            <div class="min-h-screen bg-gray-50">
+                <header class="bg-green-600 text-white p-4">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h1 class="text-xl md:text-2xl font-bold">🔧 मिस्त्री Dashboard</h1>
+                            <p class="text-sm">${state.currentUser.category} - ${state.currentUser.area}</p>
+                        </div>
+                        <button onclick="logout()" class="bg-red-500 px-3 py-2 rounded-lg text-sm">लॉगआउट</button>
+                    </div>
+                </header>
+                <div class="max-w-6xl mx-auto p-4 md:p-6">
+                    <div class="bg-white rounded-xl shadow-lg p-4 md:p-6 mb-6">
+                        <h2 class="text-xl font-bold mb-4">प्रोफाइल ${state.currentUser.verified ? '<span class="text-blue-500">✓ Verified</span>' : '<span class="text-red-500">⚠ Pending</span>'}</h2>
+                        <div class="grid md:grid-cols-2 gap-4 mb-6">
+                            <p><strong>नाम:</strong> ${state.currentUser.name}</p>
+                            <p><strong>फोन:</strong> ${state.currentUser.phone}</p>
+                            <p><strong>कैटेगरी:</strong> ${state.currentUser.category}</p>
+                            <p><strong>क्षेत्र:</strong> ${state.currentUser.area}</p>
+                            <p><strong>UPI:</strong> ${state.currentUser.upiId}</p>
+                        </div>
+                        <h3 class="font-bold mb-3">📱 QR Code</h3>
+                        <img src="${generateQRCode(state.currentUser.upiId, state.currentUser.name)}" class="rounded-lg shadow-md w-48">
+                    </div>
+                    <div class="bg-white rounded-xl shadow-lg p-4 md:p-6">
+                        <h2 class="text-xl font-bold mb-6">नए रिक्वेस्ट (${myRequests.length})</h2>
+                        ${myRequests.length === 0 ? '<p class="text-center py-8">कोई रिक्वेस्ट नहीं</p>' : myRequests.map(req => `
+                            <div class="border rounded-lg p-4 mb-4">
+                                <div class="flex justify-between mb-2">
+                                    <div>
+                                        <h3 class="font-bold">${req.customerName}</h3>
+                                        <p class="text-sm text-gray-500">${req.requestId}</p>
+                                    </div>
+                                    <span class="text-xs bg-blue-100 px-2 py-1 rounded">${req.timestamp}</span>
+                                </div>
+                                <p class="my-3">${req.description}</p>
+                                <p class="text-green-600 font-bold mb-2">अनुमानित: ₹${req.estimatedPrice}</p>
+                                ${req.photo ? `<img src="${req.photo}" class="max-w-sm rounded-lg mb-4">` : ''}
+                                <div class="flex gap-2">
+                                    <a href="tel:${req.customerPhone}" class="flex-1 bg-green-500 text-white py-3 rounded-lg text-center">📞 कॉल</a>
+                                    <button onclick="viewSlip('${req.requestId}')" class="flex-1 bg-indigo-500 text-white py-3 rounded-lg">📄 Slip देखें</button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
 
-  // Send to backend
-  try{ await postToWebApp({ action:'customer_request', ...req }); }catch(e){ console.warn(e); }
+    function renderAdminDashboard() {
+        return `
+            <div class="min-h-screen bg-gray-50">
+                <header class="bg-red-600 text-white p-4">
+                    <div class="flex justify-between items-center max-w-7xl mx-auto">
+                        <h1 class="text-2xl font-bold">👨‍💼 Admin Panel</h1>
+                        <button onclick="logout()" class="bg-white text-red-600 px-4 py-2 rounded-lg font-semibold">Logout</button>
+                    </div>
+                </header>
+                <div class="max-w-7xl mx-auto p-6">
+                    <div class="grid md:grid-cols-4 gap-4 mb-6">
+                        <div class="bg-white p-6 rounded-xl shadow-lg">
+                            <h3 class="text-gray-600 text-sm">Total Workers</h3>
+                            <p class="text-3xl font-bold text-indigo-600">${state.workers.length}</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-lg">
+                            <h3 class="text-gray-600 text-sm">Total Customers</h3>
+                            <p class="text-3xl font-bold text-green-600">${state.customers.length}</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-lg">
+                            <h3 class="text-gray-600 text-sm">Total Requests</h3>
+                            <p class="text-3xl font-bold text-blue-600">${state.requests.length}</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-lg">
+                            <h3 class="text-gray-600 text-sm">Pending Approvals</h3>
+                            <p class="text-3xl font-bold text-orange-600">${state.workers.filter(w => !w.verified).length}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+                        <h2 class="text-2xl font-bold mb-4">👷 All Workers</h2>
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead class="bg-gray-100">
+                                    <tr>
+                                        <th class="p-3 text-left">Name</th>
+                                        <th class="p-3 text-left">Phone</th>
+                                        <th class="p-3 text-left">Category</th>
+                                        <th class="p-3 text-left">Area</th>
+                                        <th class="p-3 text-left">Status</th>
+                                        <th class="p-3 text-left">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${state.workers.map(w => `
+                                        <tr class="border-b">
+                                            <td class="p-3">${w.name}</td>
+                                            <td class="p-3">${w.phone}</td>
+                                            <td class="p-3">${w.category}</td>
+                                            <td class="p-3">${w.area}</td>
+                                            <td class="p-3">${w.verified ? '<span class="text-green-600">✓ Verified</span>' : '<span class="text-orange-600">⏳ Pending</span>'}</td>
+                                            <td class="p-3">
+                                                ${!w.verified ? `<button onclick="approveWorker(${w.id})" class="bg-green-500 text-white px-3 py-1 rounded text-sm">Approve</button>` : ''}
+                                                <button onclick="deleteWorker(${w.id})" class="bg-red-500 text-white px-3 py-1 rounded text-sm ml-2">Delete</button>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
 
-  document.getElementById('reqMsg').innerText = t('requestSent');
-  // reset
-  document.getElementById('req_desc').value = '';
-  document.getElementById('req_photo').value = '';
-  renderCustomerDashboard();
-}
+                    <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+                        <h2 class="text-2xl font-bold mb-4">👥 All Customers</h2>
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead class="bg-gray-100">
+                                    <tr>
+                                        <th class="p-3 text-left">Name</th>
+                                        <th class="p-3 text-left">Phone</th>
+                                        <th class="p-3 text-left">Area</th>
+                                        <th class="p-3 text-left">Total Requests</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${state.customers.map(c => `
+                                        <tr class="border-b">
+                                            <td class="p-3">${c.name}</td>
+                                            <td class="p-3">${c.phone}</td>
+                                            <td class="p-3">${c.area}</td>
+                                            <td class="p-3">${state.requests.filter(r => r.customerId === c.id).length}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                            </div>
+                    </div>
 
-/* Payment flow - open payment modal simplified */
-function openPaymentModal(workerId){
-  const worker = state.workers.find(w=>w.id===workerId);
-  if(!worker) return alert('Worker not found');
-  // show small modal using window prompt (simpler for single-file)
-  const amount = prompt('Enter amount to pay (₹)');
-  if(!amount || isNaN(amount)) return alert('Valid amount needed');
-  const q = genQRforUPI(worker.upi || CONFIG.UPI_ID, worker.name, amount);
-  // show QR in new window
-  const win = window.open('', '_blank', 'width=360,height=600');
-  win.document.write(`<div style="font-family:Arial;padding:12px;text-align:center">
-    <h3>Pay ₹${amount} to ${worker.name}</h3>
-    <img src="${q}" style="width:240px;height:240px;margin:12px;border-radius:8px"/><p>UPI: ${worker.upi || CONFIG.UPI_ID}</p>
-    <p><button onclick="window.close()">Close</button></p>
-    </div>`);
-}
+                    <div class="bg-white rounded-xl shadow-lg p-6">
+                        <h2 class="text-2xl font-bold mb-4">📋 All Requests</h2>
+                        <div class="space-y-4">
+                            ${state.requests.map(req => `
+                                <div class="border rounded-lg p-4">
+                                    <div class="flex justify-between mb-2">
+                                        <div>
+                                            <p class="font-bold">${req.requestId}</p>
+                                            <p class="text-sm text-gray-600">${req.customerName} → ${req.category}</p>
+                                        </div>
+                                        <span class="text-xs bg-blue-100 px-3 py-1 rounded">${req.timestamp}</span>
+                                    </div>
+                                    <p class="text-sm mb-2">${req.description}</p>
+                                    <div class="flex gap-2 text-sm">
+                                        <span class="bg-green-100 px-2 py-1 rounded">₹${req.estimatedPrice}</span>
+                                        <span class="bg-purple-100 px-2 py-1 rounded">📍 ${req.area}</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
 
-/* Chat placeholder (local only) */
-function openWorkerChat(workerId){
-  const worker = state.workers.find(w=>w.id===workerId);
-  if(!worker) return;
-  const msg = prompt(`Send message to ${worker.name} (this demo doesn't send messages)`);
-  if(msg) alert('Message noted (demo)');
-}
+    function renderRequestSlip() {
+        const req = state.requests.find(r => r.requestId === state.showSlip);
+        if (!req) return '<p>Request not found</p>';
 
-/* ---------------------
-   HELPERS: geolocation, Cloudinary upload, webapp POST
-   --------------------- */
-function getCurrentPosition(timeout=7000){
-  return new Promise((resolve,reject)=>{
-    if(!navigator.geolocation) return reject(new Error('Not supported'));
-    const t = setTimeout(()=>reject(new Error('Timeout')), timeout);
-    navigator.geolocation.getCurrentPosition(pos=>{ clearTimeout(t); resolve(pos); }, err=>{ clearTimeout(t); reject(err); }, { timeout });
-  });
-}
+        const worker = state.workers.find(w => w.category === req.category && w.area === req.workerArea);
 
-async function uploadImageToCloudinary(file){
-  if(!CONFIG.CLOUDINARY_UPLOAD_URL || CONFIG.CLOUDINARY_UPLOAD_URL.includes('REPLACE_CLOUDINARY')){
-    throw new Error('Cloudinary not configured');
-  }
-  const form = new FormData();
-  form.append('file', file);
-  if(CONFIG.CLOUDINARY_UPLOAD_PRESET) form.append('upload_preset', CONFIG.CLOUDINARY_UPLOAD_PRESET);
-  const res = await fetch(CONFIG.CLOUDINARY_UPLOAD_URL, { method:'POST', body: form });
-  if(!res.ok) throw new Error('Upload failed');
-  const data = await res.json();
-  return data.secure_url || data.url || '';
-}
+        return `
+            <div class="min-h-screen bg-gray-100 p-4 flex items-center justify-center">
+                <div class="bg-white max-w-2xl w-full rounded-xl shadow-2xl overflow-hidden">
+                    <div class="print-area">
+                        <div class="bg-indigo-600 text-white p-6 text-center">
+                            <h1 class="text-3xl font-bold mb-2">घर सेवा ऐप</h1>
+                            <p class="text-sm">Work Request Slip</p>
+                        </div>
+                        
+                        <div class="p-8">
+                            <div class="text-center mb-6">
+                                <div class="inline-block bg-yellow-100 px-4 py-2 rounded-lg">
+                                    <p class="text-sm text-gray-600">Request ID</p>
+                                    <p class="text-2xl font-bold text-gray-800">${req.requestId}</p>
+                                </div>
+                            </div>
 
-async function postToWebApp(payload){
-  if(!CONFIG.WEB_APP_URL || CONFIG.WEB_APP_URL.includes('REPLACE_WEB_APP_URL')){
-    console.warn('WEB_APP_URL missing, skipping server post');
-    return;
-  }
-  const form = new FormData();
-  for(const k in payload) form.append(k, payload[k]);
-  const res = await fetch(CONFIG.WEB_APP_URL, { method:'POST', body: form });
-  return res.text();
-}
+                            <div class="grid md:grid-cols-2 gap-6 mb-6">
+                                <div class="border-2 border-indigo-200 rounded-lg p-4">
+                                    <h3 class="font-bold text-indigo-600 mb-3 flex items-center gap-2">
+                                        👤 Customer Details
+                                    </h3>
+                                    <div class="space-y-2 text-sm">
+                                        <p><strong>Name:</strong> ${req.customerName}</p>
+                                        <p><strong>Phone:</strong> ${req.customerPhone}</p>
+                                        <p><strong>Area:</strong> ${req.area}</p>
+                                    </div>
+                                </div>
 
-/* ---------------------
-   ADMIN PANEL (simple) - reads from Apps Script list endpoint
-   --------------------- */
-function renderAdminPanel(){
-  document.getElementById('app').innerHTML = `
-    <div class="min-h-screen p-4">
-      <div class="max-w-4xl mx-auto bg-white p-4 rounded shadow">
-        <div class="flex justify-between items-center">
-          <h2 class="font-semibold">Admin Panel</h2>
-          <div><button onclick="renderIntro()" class="px-3 py-1 bg-gray-200 rounded">Exit</button></div>
-        </div>
-        <div class="mt-4">
-          <button onclick="loadRegistrations()" class="px-3 py-2 bg-indigo-600 text-white rounded">Load registrations</button>
-          <div id="adminMsg" class="mt-2 text-sm"></div>
-        </div>
-        <div id="adminList" class="mt-4"></div>
-      </div>
-    </div>
-  `;
-}
+                                ${worker ? `
+                                    <div class="border-2 border-green-200 rounded-lg p-4">
+                                        <h3 class="font-bold text-green-600 mb-3 flex items-center gap-2">
+                                            🔧 Worker Details
+                                        </h3>
+                                        <div class="space-y-2 text-sm">
+                                            <p><strong>Name:</strong> ${worker.name}</p>
+                                            <p><strong>Phone:</strong> ${worker.phone}</p>
+                                            <p><strong>Category:</strong> ${worker.category}</p>
+                                            <p><strong>Experience:</strong> ${worker.experience} years</p>
+                                        </div>
+                                    </div>
+                                ` : ''}
+                            </div>
 
-async function loadRegistrations(){
-  const out = document.getElementById('adminList');
-  out.innerHTML = 'Loading...';
-  if(!CONFIG.WEB_APP_URL || CONFIG.WEB_APP_URL.includes('REPLACE_WEB_APP_URL')){
-    out.innerHTML = '<div class="text-sm text-red-500">WEB_APP_URL not configured</div>';
-    return;
-  }
-  try{
-    const res = await fetch(CONFIG.WEB_APP_URL + '?action=list');
-    const data = await res.json();
-    if(!Array.isArray(data)) throw new Error('Invalid response');
-    out.innerHTML = `<table class="w-full text-left border-collapse"><thead><tr><th class="p-2 border">Time</th><th class="p-2 border">Action</th><th class="p-2 border">Name</th><th class="p-2 border">Phone</th></tr></thead><tbody>` +
-      data.map(r=>`<tr><td class="p-2 border">${r.timestamp||''}</td><td class="p-2 border">${r.action||''}</td><td class="p-2 border">${r.name||''}</td><td class="p-2 border">${r.phone||''}</td></tr>`).join('') +
-      `</tbody></table>`;
-  }catch(err){
-    console.error(err);
-    out.innerHTML = `<div class="text-sm text-red-500">Failed to load: ${err.message}</div>`;
-  }
-}
+                            <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                                <h3 class="font-bold mb-3">📋 Work Details</h3>
+                                <div class="space-y-2 text-sm">
+                                    <p><strong>Category:</strong> ${req.category}</p>
+                                    <p><strong>Description:</strong> ${req.description}</p>
+                                    <p><strong>Date & Time:</strong> ${req.timestamp}</p>
+                                </div>
+                            </div>
 
-/* ---------------------
-   INIT
-   --------------------- */
-function toggleLang(){ LANG = LANG === 'hi' ? 'en' : 'hi'; /* re-render current view */ renderCurrentView(); }
-function renderCurrentView(){
-  if(state.view === 'intro' || !state.view) renderIntro();
-  else if(state.userType && !state.currentUser) renderRegister(state.userType);
-  else if(state.userType === 'customer') renderCustomerDashboard();
-  else if(state.userType === 'worker') renderWorkerDashboard();
-  else if(state.view === 'admin') renderAdminPanel();
-  else renderIntro();
-}
+                            <div class="bg-green-50 border-2 border-green-300 rounded-lg p-4 mb-6">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-lg font-semibold">Estimated Price:</span>
+                                    <span class="text-3xl font-bold text-green-600">₹${req.estimatedPrice}</span>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-2">*Final price may vary based on work complexity</p>
+                            </div>
 
-/* helper to generate UPI QR (used in worker dashboard) */
-function genQRforUPI(upi,name,amount=''){ return genQRforUPI; }
+                            ${req.photo ? `
+                                <div class="mb-6">
+                                    <h3 class="font-bold mb-3">📷 Work Photo</h3>
+                                    <img src="${req.photo}" class="rounded-lg shadow-md max-w-full">
+                                </div>
+                            ` : ''}
 
-/* tiny bugfix: local name for QR */
-function genQRforUPI(upi,name,amt=''){ return `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(`upi://pay?pa=${upi}&pn=${name}${amt?`&am=${amt}`:''}&cu=INR`)}`; }
+                            <div class="border-t pt-4 mt-6">
+                                <p class="text-xs text-gray-500 text-center">
+                                    This is a computer-generated slip. No signature required.<br>
+                                    For support: +91-1234567890 | support@gharseva.com
+                                </p>
+                            </div>
+                        </div>
+                    </div>
 
-/* start app */
-renderIntro();
+                    <div class="bg-gray-100 p-4 flex gap-3 print:hidden">
+                        <button onclick="window.print()" class="flex-1 bg-indigo-600 text-white py-3 rounded-lg font-semibold">🖨️ Print</button>
+                        <button onclick="downloadSlip()" class="flex-1 bg-green-600 text-white py-3 rounded-lg font-semibold">📥 Download</button>
+                        <button onclick="closeSlip()" class="flex-1 bg-gray-600 text-white py-3 rounded-lg font-semibold">✕ Close</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
 
-</script>
-</body>
-</html>
+    function renderPaymentScreen() {
+        const worker = state.workers.find(w => w.id === state.showPayment.workerId);
+        return `
+            <div class="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                <div class="bg-white rounded-2xl shadow-2xl p-6 md:p-8 max-w-md w-full">
+                    <h2 class="text-2xl font-bold mb-6 text-center">💳 Payment</h2>
+                    <div class="bg-indigo-50 rounded-lg p-4 mb-4">
+                        <p class="font-medium">${worker.name}</p>
+                        <p class="text-sm">${worker.category}</p>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block font-medium mb-2">Amount (₹)</label>
+                        <input type="number" id="paymentAmount" onchange="updatePaymentData('amount', this.value)" class="w-full px-4 py-3 border rounded-lg" placeholder="500">
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg mb-4 text-center">
+                        <p class="text-sm mb-3">Scan QR Code</p>
+                        <img src="${generateQRCode(worker.upiId, worker.name, state.paymentData.amount)}" class="mx-auto rounded-lg">
+                        <p class="text-sm mt-3">UPI: <strong>${worker.upiId}</strong></p>
+                    </div>
+                    <button onclick="handlePayment()" class="w-full bg-green-600 text-white py-3 rounded-lg mb-3">Payment Done</button>
+                    <button onclick="closePayment()" class="w-full bg-gray-200 py-3 rounded-lg">Back</button>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderFeedbackScreen() {
+        return `
+            <div class="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
+                    <h2 class="text-2xl font-bold mb-6 text-center">⭐ Feedback</h2>
+                    <p class="text-center font-medium mb-6">${state.showFeedback.workerName}</p>
+                    <div class="mb-6">
+                        <label class="block font-medium mb-3 text-center">Rating</label>
+                        <div class="flex justify-center gap-2">
+                            ${[1,2,3,4,5].map(s => `
+                                <button onclick="setRating(${s})" class="star text-4xl ${s <= state.feedbackData.rating ? 'text-yellow-400' : 'text-gray-300'}">★</button>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <div class="mb-6">
+                        <label class="block font-medium mb-2">Comment</label>
+                        <textarea onchange="updateFeedbackData('comment', this.value)" class="w-full px-4 py-3 border rounded-lg" rows="4"></textarea>
+                    </div>
+                    <button onclick="submitFeedback()" class="w-full bg-indigo-600 text-white py-3 rounded-lg mb-3">Submit</button>
+                    <button onclick="closeFeedback()" class="w-full bg-gray-200 py-3 rounded-lg">Later</button>
+                </div>
+            </div>
+        `;
+    }
+
+    // Functions
+    function selectUserType(type) { state.userType = type; render(); }
+    function resetUserType() { state.userType = null; state.adminLogin = { username: '', password: '' }; render(); }
+    function updateFormData(field, value) { state.formData[field] = value; }
+    function updateAdminLogin(field, value) { state.adminLogin[field] = value; }
+    
+    function handleAdminLogin() {
+        if (state.adminLogin.username === ADMIN_USERNAME && state.adminLogin.password === ADMIN_PASSWORD) {
+            state.isAdmin = true;
+            state.isLoggedIn = true;
+            render();
+        } else {
+            alert('Invalid credentials!');
+        }
+    }
+
+    function handleRegister() {
+        if (!state.formData.name || !state.formData.phone || !state.formData.area) {
+            return alert('सभी फील्ड भरें');
+        }
+        
+        if (state.userType === 'worker') {
+            if (!state.formData.category || !state.formData.upiId) return alert('सभी फील्ड भरें');
+            state.currentUser = { 
+                id: Date.now(), 
+                ...state.formData, 
+                rating: 0, 
+                totalReviews: 0, 
+                reviews: [],
+                verified: false
+            };
+            state.workers.push(state.currentUser);
+            alert('रजिस्ट्रेशन सफल! Admin approval pending.');
+        } else {
+            state.currentUser = { id: Date.now(), name: state.formData.name, phone: state.formData.phone, area: state.formData.area };
+            state.customers.push(state.currentUser);
+        }
+        state.isLoggedIn = true;
+        state.formData = { name: '', phone: '', category: '', experience: '', area: '', upiId: '' };
+        render();
+    }
+
+    function selectCategory(cat, price) { 
+        state.requestData.category = cat; 
+        state.requestData.estimatedPrice = price;
+        render(); 
+    }
+
+    function updateRequestData(field, value) { state.requestData[field] = value; render(); }
+
+    function handleImageUpload(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => { state.requestData.photo = reader.result; render(); };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function handleRequest() {
+        if (!state.requestData.category || !state.requestData.description || !state.requestData.area) {
+            return alert('कैटेगरी, area और विवरण भरें');
+        }
+
+        const requestId = generateRequestId();
+        const newRequest = {
+            id: Date.now(),
+            requestId: requestId,
+            customerId: state.currentUser.id,
+            customerName: state.currentUser.name,
+            customerPhone: state.currentUser.phone,
+            ...state.requestData,
+            workerArea: state.requestData.area,
+            timestamp: new Date().toLocaleString('hi-IN'),
+            status: 'pending'
+        };
+        
+        state.requests.push(newRequest);
+        state.showSlip = requestId;
+        render();
+    }
+
+    function viewSlip(requestId) {
+        state.showSlip = requestId;
+        render();
+    }
+
+    function closeSlip() {
+        state.showSlip = null;
+        state.requestData = { category: '', description: '', photo: null, area: '', estimatedPrice: '' };
+        render();
+    }
+
+    function downloadSlip() {
+        alert('Download feature - आप इस slip को screenshot ले सकते हैं या print कर सकते हैं');
+    }
+
+    function showPaymentScreen(id, name) { state.showPayment = { workerId: id, workerName: name }; render(); }
+    function closePayment() { state.showPayment = null; render(); }
+    function updatePaymentData(field, value) { state.paymentData[field] = value; render(); }
+    
+    function handlePayment() {
+        if (!state.paymentData.amount) return alert('राशि दर्ज करें');
+        state.showFeedback = { 
+            workerId: state.showPayment.workerId, 
+            workerName: state.showPayment.workerName, 
+            amount: state.paymentData.amount 
+        };
+        state.showPayment = null;
+        render();
+    }
+
+    function setRating(r) { state.feedbackData.rating = r; render(); }
+    function updateFeedbackData(field, value) { state.feedbackData[field] = value; }
+    
+    function submitFeedback() {
+        if (!state.feedbackData.rating) return alert('रेटिंग दें');
+        const idx = state.workers.findIndex(w => w.id === state.showFeedback.workerId);
+        if (idx !== -1) {
+            const review = { 
+                id: Date.now(), 
+                customerName: state.currentUser.name, 
+                rating: state.feedbackData.rating, 
+                comment: state.feedbackData.comment, 
+                timestamp: new Date().toLocaleString('hi-IN') 
+            };
+            state.workers[idx].reviews.push(review);
+            state.workers[idx].rating = state.workers[idx].reviews.reduce((a,r) => a + r.rating, 0) / state.workers[idx].reviews.length;
+            state.workers[idx].totalReviews = state.workers[idx].reviews.length;
+        }
+        alert('फीडबैक submit हो गया!');
+        state.showFeedback = null;
+        state.feedbackData = { rating: 0, comment: '' };
+        render();
+    }
+
+    function closeFeedback() { state.showFeedback = null; render(); }
+    
+    function approveWorker(id) {
+        const idx = state.workers.findIndex(w => w.id === id);
+        if (idx !== -1) {
+            state.workers[idx].verified = true;
+            alert('Worker approved!');
+            render();
+        }
+    }
+
+    function deleteWorker(id) {
+        if (confirm('Are you sure you want to delete this worker?')) {
+            state.workers = state.workers.filter(w => w.id !== id);
+            render();
+        }
+    }
+
+    function logout() { 
+        state = { 
+            ...state, 
+            isLoggedIn: false, 
+            userType: null, 
+            currentUser: null,
+            isAdmin: false,
+            requestData: { category: '', description: '', photo: null, area: '', estimatedPrice: '' }
+        }; 
+        render(); 
+    }
+
+  
