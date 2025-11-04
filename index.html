@@ -18,12 +18,16 @@
     </style>
 </head>
 <body class="bg-gray-50">
+
 <div id="app"></div>
+
 <script>
-    const ADMIN_PHONE = atob('ODIxODE5Nzk2NA==');
+    const ADMIN_PHONE = '8218197964';
     let generatedOTP = null;
     let otpGeneratedTime = null;
+
     const areas = ['लाजपत नगर', 'राजौरी गार्डन', 'द्वारका', 'रोहिणी', 'पीतमपुरा', 'करोल बाग', 'सरिता विहार', 'नेहरू प्लेस', 'कनॉट प्लेस', 'वसंत कुंज'];
+
     let state = {
         userType: null,
         isLoggedIn: false,
@@ -44,6 +48,7 @@
         showSlip: null,
         adminLogin: { phone: '', otp: '', otpSent: false }
     };
+
     const categories = [
         { name: 'प्लंबिंग', icon: '🚰', basePrice: 300 },
         { name: 'इलेक्ट्रिशियन', icon: '⚡', basePrice: 400 },
@@ -52,13 +57,16 @@
         { name: 'छत/दीवार', icon: '🏠', basePrice: 600 },
         { name: 'अन्य मिस्त्री', icon: '🔧', basePrice: 350 }
     ];
+
     function generateQRCode(upiId, name, amount = '') {
-        const upiString = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(name)}${amount ? `&am=${amount}` : ''}&cu=INR`;
-        return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiString)}`;
+        const upiString = upi://pay?pa=${upiId}&pn=${encodeURIComponent(name)}${amount ? `&am=${amount} : ''}&cu=INR`;
+        return https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiString)};
     }
+
     function generateRequestId() {
         return 'REQ' + Date.now().toString().slice(-8);
     }
+
     function render() {
         const app = document.getElementById('app');
         if (state.showSlip) {
@@ -79,6 +87,7 @@
             app.innerHTML = renderWorkerDashboard();
         }
     }
+
     function renderUserTypeSelection() {
         return `
             <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
@@ -106,6 +115,7 @@
             </div>
         `;
     }
+
     function renderRegistration() {
         if (state.userType === 'admin') {
             return `
@@ -114,13 +124,13 @@
                         <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">🔐 Admin Login</h2>
                         <div class="space-y-4">
                             <div>
-                                <label class="block text-gray-700 font-medium mb-2">Phone Number</label>
-                                <input type="tel" value="${state.adminLogin.phone}" onchange="updateAdminLogin('phone', this.value)" class="w-full px-4 py-3 border border-gray-300 rounded-lg" placeholder="Enter phone number" maxlength="10" ${state.adminLogin.otpSent ? 'readonly' : ''}>
+                                <label class="block text-gray-700 font-medium mb-2">Admin Phone Number</label>
+                                <input type="tel" value="${state.adminLogin.phone}" onchange="updateAdminLogin('phone', this.value)" class="w-full px-4 py-3 border border-gray-300 rounded-lg" placeholder="8218197964" maxlength="10" ${state.adminLogin.otpSent ? 'readonly' : ''}>
                             </div>
                             ${state.adminLogin.otpSent ? `
                                 <div class="bg-green-50 border border-green-200 rounded-lg p-4">
-                                    <p class="text-sm text-green-800">✓ OTP sent to your phone!</p>
-                                    <p class="text-xs text-gray-500 mt-1">Please check your SMS</p>
+                                    <p class="text-sm text-green-800">✓ OTP भेज दिया गया!</p>
+                                    <p class="text-xs text-green-600 mt-1">OTP: <strong>${generatedOTP}</strong> (Demo)</p>
                                 </div>
                                 <div>
                                     <label class="block text-gray-700 font-medium mb-2">Enter OTP</label>
@@ -137,6 +147,7 @@
                 </div>
             `;
         }
+
         const isWorker = state.userType === 'worker';
         return `
             <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
@@ -155,7 +166,7 @@
                             <label class="block text-gray-700 font-medium mb-2">क्षेत्र/इलाका</label>
                             <select onchange="updateFormData('area', this.value)" class="w-full px-4 py-3 border rounded-lg">
                                 <option value="">चुनें</option>
-                                ${areas.map(a => `<option value="${a}">${a}</option>`).join('')}
+                                ${areas.map(a => <option value="${a}">${a}</option>).join('')}
                             </select>
                         </div>
                         ${isWorker ? `
@@ -163,7 +174,7 @@
                                 <label class="block text-gray-700 font-medium mb-2">सर्विस कैटेगरी</label>
                                 <select onchange="updateFormData('category', this.value)" class="w-full px-4 py-3 border rounded-lg">
                                     <option value="">चुनें</option>
-                                    ${categories.map(c => `<option value="${c.name}">${c.icon} ${c.name}</option>`).join('')}
+                                    ${categories.map(c => <option value="${c.name}">${c.name}</option>).join('')}
                                 </select>
                             </div>
                             <div>
@@ -182,12 +193,14 @@
             </div>
         `;
     }
+
     function renderCustomerDashboard() {
         const filteredWorkers = state.workers.filter(w => {
             const categoryMatch = !state.requestData.category || w.category === state.requestData.category;
             const areaMatch = !state.requestData.area || w.area === state.requestData.area;
             return categoryMatch && areaMatch && w.verified;
         });
+
         return `
             <div class="min-h-screen bg-gray-50">
                 <header class="bg-indigo-600 text-white p-4 shadow-lg">
@@ -205,42 +218,42 @@
                         <div class="space-y-4">
                             <select onchange="updateRequestData('area', this.value)" class="w-full px-4 py-3 border rounded-lg">
                                 <option value="">अपना area चुनें</option>
-                                ${areas.map(a => `<option value="${a}">${a}</option>`).join('')}
+                                ${areas.map(a => <option value="${a}">${a}</option>).join('')}
                             </select>
                             <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
                                 ${categories.map(cat => `
-                                    <button onclick="selectCategory('${cat.name}', ${cat.basePrice})" class="p-4 rounded-xl border-2 ${state.requestData.category === cat.name ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200'} hover:border-indigo-300 transition">
-                                        <div class="text-4xl mb-2">${cat.icon}</div>
-                                        <p class="text-sm font-medium">${cat.name}</p>
-                                        <p class="text-xs text-green-600 mt-1">₹${cat.basePrice}+</p>
+                                    <button onclick="selectCategory('${cat.name}', ${cat.basePrice})" class="p-3 rounded-xl border-2 ${state.requestData.category === cat.name ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200'}">
+                                        <div class="text-3xl mb-2">${cat.icon}</div>
+                                        <p class="text-xs font-medium">${cat.name}</p>
+                                        <p class="text-xs text-green-600">₹${cat.basePrice}+</p>
                                     </button>
                                 `).join('')}
                             </div>
-                            ${state.requestData.estimatedPrice ? `<div class="bg-green-50 border border-green-200 p-3 rounded"><p class="text-sm">अनुमानित कीमत: <strong class="text-xl text-green-600">₹${state.requestData.estimatedPrice}</strong></p></div>` : ''}
+                            ${state.requestData.estimatedPrice ? <div class="bg-green-50 p-3 rounded"><p class="text-sm">अनुमानित: <strong class="text-xl">₹${state.requestData.estimatedPrice}</strong></p></div> : ''}
                             <textarea onchange="updateRequestData('description', this.value)" class="w-full px-4 py-3 border rounded-lg" rows="3" placeholder="काम का विवरण"></textarea>
                             <input type="file" accept="image/*" onchange="handleImageUpload(event)" class="w-full px-4 py-3 border rounded-lg">
-                            ${state.requestData.photo ? `<img src="${state.requestData.photo}" class="max-w-xs rounded-lg shadow-md">` : ''}
-                            <button onclick="handleRequest()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg font-semibold">रिक्वेस्ट भेजें</button>
+                            ${state.requestData.photo ? <img src="${state.requestData.photo}" class="max-w-xs rounded-lg"> : ''}
+                            <button onclick="handleRequest()" class="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold">रिक्वेस्ट भेजें</button>
                         </div>
                     </div>
                     ${state.requestData.category && state.requestData.area ? `
                         <div class="bg-white rounded-xl shadow-lg p-4">
-                            <h2 class="text-xl font-bold mb-4">${state.requestData.area} में उपलब्ध मिस्त्री</h2>
-                            ${filteredWorkers.length === 0 ? '<p class="text-center py-8 text-gray-500">इस area में कोई मिस्त्री उपलब्ध नहीं</p>' : `
+                            <h2 class="text-xl font-bold mb-4">${state.requestData.area} में मिस्त्री</h2>
+                            ${filteredWorkers.length === 0 ? '<p class="text-center py-4">कोई मिस्त्री नहीं</p>' : `
                                 <div class="space-y-4">
                                     ${filteredWorkers.map(w => `
-                                        <div class="border rounded-lg p-4 hover:shadow-lg transition">
-                                            <div class="flex justify-between mb-3">
+                                        <div class="border rounded-lg p-4">
+                                            <div class="flex justify-between mb-2">
                                                 <div>
-                                                    <h3 class="font-bold text-lg">${w.name} ${w.verified ? '<span class="text-blue-500">✓</span>' : ''}</h3>
-                                                    <p class="text-sm text-gray-600">${w.category} • ${w.area}</p>
-                                                    <p class="text-sm mt-1">⭐ ${w.rating.toFixed(1)} <span class="text-gray-500">(${w.totalReviews} reviews)</span></p>
+                                                    <h3 class="font-bold">${w.name} ${w.verified ? '✓' : ''}</h3>
+                                                    <p class="text-sm text-gray-600">${w.category} - ${w.area}</p>
+                                                    <p class="text-sm">⭐ ${w.rating.toFixed(1)} (${w.totalReviews})</p>
                                                 </div>
-                                                <p class="text-sm text-indigo-600 font-medium">${w.experience} साल</p>
+                                                <p class="text-sm text-indigo-600">${w.experience} साल</p>
                                             </div>
                                             <div class="flex gap-2">
-                                                <a href="tel:${w.phone}" class="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 rounded text-center text-sm font-medium">📞 कॉल करें</a>
-                                                <button onclick="showPaymentScreen(${w.id}, '${w.name}')" class="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white py-2 rounded text-sm font-medium">💳 पेमेंट</button>
+                                                <a href="tel:${w.phone}" class="flex-1 bg-green-500 text-white py-2 rounded text-center text-sm">📞 कॉल</a>
+                                                <button onclick="showPaymentScreen(${w.id}, '${w.name}')" class="flex-1 bg-indigo-500 text-white py-2 rounded text-sm">💳 पेमेंट</button>
                                             </div>
                                         </div>
                                     `).join('')}
@@ -252,6 +265,7 @@
             </div>
         `;
     }
+
     function renderWorkerDashboard() {
         const myRequests = state.requests.filter(r => r.category === state.currentUser.category && r.workerArea === state.currentUser.area);
         return `
@@ -259,7 +273,7 @@
                 <header class="bg-green-600 text-white p-4">
                     <div class="flex justify-between items-center">
                         <div>
-                            <h1 class="text-xl font-bold">🔧 मिस्त्री Dashboard</h1>
+                            <h1 class="text-xl font-bold">मिस्त्री Dashboard</h1>
                             <p class="text-sm">${state.currentUser.category}</p>
                         </div>
                         <button onclick="logout()" class="bg-red-500 px-3 py-2 rounded text-sm">लॉगआउट</button>
@@ -267,35 +281,31 @@
                 </header>
                 <div class="max-w-6xl mx-auto p-4">
                     <div class="bg-white rounded-xl shadow-lg p-4 mb-4">
-                        <h2 class="text-xl font-bold mb-3">प्रोफाइल ${state.currentUser.verified ? '<span class="text-blue-500">✓ Verified</span>' : '<span class="text-orange-500">⚠ Pending Approval</span>'}</h2>
-                        <div class="grid md:grid-cols-2 gap-3 text-sm mb-4">
-                            <p><strong>नाम:</strong> ${state.currentUser.name}</p>
-                            <p><strong>फोन:</strong> ${state.currentUser.phone}</p>
-                            <p><strong>कैटेगरी:</strong> ${state.currentUser.category}</p>
-                            <p><strong>क्षेत्र:</strong> ${state.currentUser.area}</p>
-                            <p><strong>UPI:</strong> ${state.currentUser.upiId}</p>
-                            <p><strong>अनुभव:</strong> ${state.currentUser.experience} साल</p>
-                        </div>
-                        <h3 class="font-bold mb-2">📱 आपका QR Code</h3>
-                        <img src="${generateQRCode(state.currentUser.upiId, state.currentUser.name)}" class="w-48 rounded-lg shadow-md">
+                        <h2 class="text-xl font-bold mb-2">प्रोफाइल ${state.currentUser.verified ? '✓' : '⚠'}</h2>
+                        <p><strong>नाम:</strong> ${state.currentUser.name}</p>
+                        <p><strong>फोन:</strong> ${state.currentUser.phone}</p>
+                        <p><strong>क्षेत्र:</strong> ${state.currentUser.area}</p>
+                        <p><strong>UPI:</strong> ${state.currentUser.upiId}</p>
+                        <h3 class="font-bold mt-3 mb-2">QR Code</h3>
+                        <img src="${generateQRCode(state.currentUser.upiId, state.currentUser.name)}" class="w-48 rounded-lg">
                     </div>
                     <div class="bg-white rounded-xl shadow-lg p-4">
-                        <h2 class="text-xl font-bold mb-4">नए काम के रिक्वेस्ट (${myRequests.length})</h2>
-                        ${myRequests.length === 0 ? '<p class="text-center py-8 text-gray-500">अभी कोई नया रिक्वेस्ट नहीं है</p>' : myRequests.map(req => `
-                            <div class="border rounded-lg p-4 mb-4 hover:shadow-lg transition">
+                        <h2 class="text-xl font-bold mb-4">रिक्वेस्ट (${myRequests.length})</h2>
+                        ${myRequests.length === 0 ? '<p class="text-center py-4">कोई रिक्वेस्ट नहीं</p>' : myRequests.map(req => `
+                            <div class="border rounded-lg p-4 mb-4">
                                 <div class="flex justify-between mb-2">
                                     <div>
                                         <h3 class="font-bold">${req.customerName}</h3>
                                         <p class="text-sm text-gray-500">${req.requestId}</p>
                                     </div>
-                                    <span class="text-xs bg-blue-100 text-blue-800 px-3 py-1 rounded-full">${req.timestamp}</span>
+                                    <span class="text-xs bg-blue-100 px-2 py-1 rounded">${req.timestamp}</span>
                                 </div>
-                                <p class="text-gray-700 mb-2">${req.description}</p>
-                                <p class="text-green-600 font-bold text-lg mb-2">अनुमानित: ₹${req.estimatedPrice}</p>
-                                ${req.photo ? `<img src="${req.photo}" class="max-w-md rounded-lg shadow-md mb-3">` : ''}
+                                <p class="mb-2">${req.description}</p>
+                                <p class="text-green-600 font-bold mb-2">₹${req.estimatedPrice}</p>
+                                ${req.photo ? <img src="${req.photo}" class="max-w-sm rounded-lg mb-3"> : ''}
                                 <div class="flex gap-2">
-                                    <a href="tel:${req.customerPhone}" class="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 rounded text-center font-medium">📞 ${req.customerPhone} पर कॉल करें</a>
-                                    <button onclick="viewSlip('${req.requestId}')" class="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white py-2 rounded font-medium">📄 Slip देखें</button>
+                                    <a href="tel:${req.customerPhone}" class="flex-1 bg-green-500 text-white py-2 rounded text-center">📞 कॉल</a>
+                                    <button onclick="viewSlip('${req.requestId}')" class="flex-1 bg-indigo-500 text-white py-2 rounded">📄 Slip</button>
                                 </div>
                             </div>
                         `).join('')}
@@ -304,47 +314,48 @@
             </div>
         `;
     }
+
     function renderAdminDashboard() {
         return `
             <div class="min-h-screen bg-gray-50">
                 <header class="bg-red-600 text-white p-4">
-                    <div class="max-w-7xl mx-auto flex justify-between items-center">
-                        <h1 class="text-2xl font-bold">👨‍💼 Admin Panel</h1>
-                        <button onclick="logout()" class="bg-white text-red-600 px-4 py-2 rounded font-semibold hover:bg-gray-100">Logout</button>
+                    <div class="flex justify-between items-center">
+                        <h1 class="text-xl font-bold">👨‍💼 Admin Panel</h1>
+                        <button onclick="logout()" class="bg-white text-red-600 px-4 py-2 rounded font-semibold">Logout</button>
                     </div>
                 </header>
                 <div class="max-w-7xl mx-auto p-4">
                     <div class="grid md:grid-cols-4 gap-4 mb-6">
-                        <div class="bg-white p-6 rounded-xl shadow-lg"><h3 class="text-sm text-gray-600">Total Workers</h3><p class="text-3xl font-bold text-indigo-600">${state.workers.length}</p></div>
-                        <div class="bg-white p-6 rounded-xl shadow-lg"><h3 class="text-sm text-gray-600">Total Customers</h3><p class="text-3xl font-bold text-green-600">${state.customers.length}</p></div>
-                        <div class="bg-white p-6 rounded-xl shadow-lg"><h3 class="text-sm text-gray-600">Total Requests</h3><p class="text-3xl font-bold text-blue-600">${state.requests.length}</p></div>
-                        <div class="bg-white p-6 rounded-xl shadow-lg"><h3 class="text-sm text-gray-600">Pending Approvals</h3><p class="text-3xl font-bold text-orange-600">${state.workers.filter(w => !w.verified).length}</p></div>
+                        <div class="bg-white p-4 rounded-xl shadow"><h3 class="text-sm text-gray-600">Workers</h3><p class="text-2xl font-bold text-indigo-600">${state.workers.length}</p></div>
+                        <div class="bg-white p-4 rounded-xl shadow"><h3 class="text-sm text-gray-600">Customers</h3><p class="text-2xl font-bold text-green-600">${state.customers.length}</p></div>
+                        <div class="bg-white p-4 rounded-xl shadow"><h3 class="text-sm text-gray-600">Requests</h3><p class="text-2xl font-bold text-blue-600">${state.requests.length}</p></div>
+                        <div class="bg-white p-4 rounded-xl shadow"><h3 class="text-sm text-gray-600">Pending</h3><p class="text-2xl font-bold text-orange-600">${state.workers.filter(w => !w.verified).length}</p></div>
                     </div>
-                    <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
-                        <h2 class="text-2xl font-bold mb-4">👷 All Workers</h2>
+                    <div class="bg-white rounded-xl shadow-lg p-4 mb-4">
+                        <h2 class="text-xl font-bold mb-4">Workers</h2>
                         <div class="overflow-x-auto">
                             <table class="w-full text-sm">
                                 <thead class="bg-gray-100">
                                     <tr>
-                                        <th class="p-3 text-left">Name</th>
-                                        <th class="p-3 text-left">Phone</th>
-                                        <th class="p-3 text-left">Category</th>
-                                        <th class="p-3 text-left">Area</th>
-                                        <th class="p-3 text-left">Status</th>
-                                        <th class="p-3 text-left">Action</th>
+                                        <th class="p-2 text-left">Name</th>
+                                        <th class="p-2 text-left">Phone</th>
+                                        <th class="p-2 text-left">Category</th>
+                                        <th class="p-2 text-left">Area</th>
+                                        <th class="p-2 text-left">Status</th>
+                                        <th class="p-2 text-left">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     ${state.workers.map(w => `
-                                        <tr class="border-b hover:bg-gray-50">
-                                            <td class="p-3">${w.name}</td>
-                                            <td class="p-3">${w.phone}</td>
-                                            <td class="p-3">${w.category}</td>
-                                            <td class="p-3">${w.area}</td>
-                                            <td class="p-3">${w.verified ? '<span class="text-green-600 font-medium">✓ Verified</span>' : '<span class="text-orange-600 font-medium">⏳ Pending</span>'}</td>
-                                            <td class="p-3">
-                                                ${!w.verified ? `<button onclick="approveWorker(${w.id})" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-xs mr-2">Approve</button>` : ''}
-                                                <button onclick="deleteWorker(${w.id})" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs">Delete</button>
+                                        <tr class="border-b">
+                                            <td class="p-2">${w.name}</td>
+                                            <td class="p-2">${w.phone}</td>
+                                            <td class="p-2">${w.category}</td>
+                                            <td class="p-2">${w.area}</td>
+                                            <td class="p-2">${w.verified ? '<span class="text-green-600">✓ Verified</span>' : '<span class="text-orange-600">⏳ Pending</span>'}</td>
+                                            <td class="p-2">
+                                                ${!w.verified ? <button onclick="approveWorker(${w.id})" class="bg-green-500 text-white px-2 py-1 rounded text-xs mr-1">Approve</button> : ''}
+                                                <button onclick="deleteWorker(${w.id})" class="bg-red-500 text-white px-2 py-1 rounded text-xs">Delete</button>
                                             </td>
                                         </tr>
                                     `).join('')}
@@ -352,22 +363,20 @@
                             </table>
                         </div>
                     </div>
-                    <div class="bg-white rounded-xl shadow-lg p-6">
-                        <h2 class="text-2xl font-bold mb-4">📋 All Requests</h2>
+                    <div class="bg-white rounded-xl shadow-lg p-4">
+                        <h2 class="text-xl font-bold mb-4">All Requests</h2>
                         <div class="space-y-3">
-                            ${state.requests.length === 0 ? '<p class="text-center py-8 text-gray-500">कोई request नहीं है</p>' : state.requests.map(req => `
-                                <div class="border rounded-lg p-4 hover:shadow-md transition">
-                                    <div class="flex justify-between items-start mb-2">
-                                        <div>
-                                            <p class="font-bold">${req.requestId}</p>
-                                            <p class="text-sm text-gray-600">${req.customerName} → ${req.category}</p>
-                                        </div>
-                                        <span class="text-xs bg-blue-100 text-blue-800 px-3 py-1 rounded-full">${req.timestamp}</span>
+                            ${state.requests.map(req => `
+                                <div class="border rounded-lg p-3">
+                                    <div class="flex justify-between mb-1">
+                                        <p class="font-bold text-sm">${req.requestId}</p>
+                                        <span class="text-xs bg-blue-100 px-2 py-1 rounded">${req.timestamp}</span>
                                     </div>
-                                    <p class="text-sm text-gray-700 mb-2">${req.description}</p>
-                                    <div class="flex gap-2 text-xs">
-                                        <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full font-medium">₹${req.estimatedPrice}</span>
-                                        <span class="bg-purple-100 text-purple-800 px-3 py-1 rounded-full">📍 ${req.area}</span>
+                                    <p class="text-sm">${req.customerName} → ${req.category}</p>
+                                    <p class="text-xs text-gray-600">${req.description}</p>
+                                    <div class="flex gap-2 mt-2 text-xs">
+                                        <span class="bg-green-100 px-2 py-1 rounded">₹${req.estimatedPrice}</span>
+                                        <span class="bg-purple-100 px-2 py-1 rounded">📍 ${req.area}</span>
                                     </div>
                                 </div>
                             `).join('')}
@@ -377,13 +386,40 @@
             </div>
         `;
     }
+
     function renderRequestSlip() {
         const req = state.requests.find(r => r.requestId === state.showSlip);
-        if (!req) return '<p>Request not found</p>';
+        if (!req) return '<p>Not found</p>';
         const worker = state.workers.find(w => w.category === req.category && w.area === req.workerArea);
         return `
             <div class="min-h-screen bg-gray-100 p-4 flex items-center justify-center">
                 <div class="bg-white max-w-2xl w-full rounded-xl shadow-2xl">
                     <div class="print-area">
                         <div class="bg-indigo-600 text-white p-6 text-center">
-                            <h1 class="text-3xl
+                            <h1 class="text-3xl font-bold">घर सेवा ऐप</h1>
+                            <p>Work Request Slip</p>
+                        </div>
+                        <div class="p-6">
+                            <div class="text-center mb-4">
+                                <div class="inline-block bg-yellow-100 px-4 py-2 rounded">
+                                    <p class="text-sm">Request ID</p>
+                                    <p class="text-2xl font-bold">${req.requestId}</p>
+                                </div>
+                            </div>
+                            <div class="grid md:grid-cols-2 gap-4 mb-4">
+                                <div class="border-2 border-indigo-200 rounded-lg p-3">
+                                    <h3 class="font-bold text-indigo-600 mb-2">👤 Customer</h3>
+                                    <p class="text-sm"><strong>Name:</strong> ${req.customerName}</p>
+                                    <p class="text-sm"><strong>Phone:</strong> ${req.customerPhone}</p>
+                                    <p class="text-sm"><strong>Area:</strong> ${req.area}</p>
+                                </div>
+                                ${worker ? `
+                                    <div class="border-2 border-green-200 rounded-lg p-3">
+                                        <h3 class="font-bold text-green-600 mb-2">🔧 Worker</h3>
+                                        <p class="text-sm"><strong>Name:</strong> ${worker.name}</p>
+                                        <p class="text-sm"><strong>Phone:</strong> ${worker.phone}</p>
+                                        <p class="text-sm"><strong>Category:</strong> ${worker.category}</p>
+                                    </div>
+                                ` : ''}
+                            </div>
+                            <div class="bg-gray-50 rounded-lg p-3 mb-4
