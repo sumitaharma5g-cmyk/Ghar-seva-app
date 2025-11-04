@@ -54,8 +54,8 @@
         { name: 'अन्य मिस्त्री', icon: '🔧', basePrice: 350 }
     ];
     function generateQRCode(upiId, name, amount = '') {
-        const upiString = upi://pay?pa=${upiId}&pn=${encodeURIComponent(name)}${amount ? `&am=${amount} : ''}&cu=INR`;
-        return https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiString)};
+        const upiString = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(name)}${amount ? `&am=${amount}` : ''}&cu=INR`;
+        return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiString)}`;
     }
     function generateRequestId() {
         return 'REQ' + Date.now().toString().slice(-8);
@@ -156,7 +156,7 @@
                             <label class="block text-gray-700 font-medium mb-2">क्षेत्र/इलाका</label>
                             <select onchange="updateFormData('area', this.value)" class="w-full px-4 py-3 border rounded-lg">
                                 <option value="">चुनें</option>
-                                ${areas.map(a => <option value="${a}">${a}</option>).join('')}
+                                ${areas.map(a => `<option value="${a}">${a}</option>`).join('')}
                             </select>
                         </div>
                         ${isWorker ? `
@@ -164,7 +164,7 @@
                                 <label class="block text-gray-700 font-medium mb-2">सर्विस कैटेगरी</label>
                                 <select onchange="updateFormData('category', this.value)" class="w-full px-4 py-3 border rounded-lg">
                                     <option value="">चुनें</option>
-                                    ${categories.map(c => <option value="${c.name}">${c.icon} ${c.name}</option>).join('')}
+                                    ${categories.map(c => `<option value="${c.name}">${c.icon} ${c.name}</option>`).join('')}
                                 </select>
                             </div>
                             <div>
@@ -206,7 +206,7 @@
                         <div class="space-y-4">
                             <select onchange="updateRequestData('area', this.value)" class="w-full px-4 py-3 border rounded-lg">
                                 <option value="">अपना area चुनें</option>
-                                ${areas.map(a => <option value="${a}">${a}</option>).join('')}
+                                ${areas.map(a => `<option value="${a}">${a}</option>`).join('')}
                             </select>
                             <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
                                 ${categories.map(cat => `
@@ -217,10 +217,10 @@
                                     </button>
                                 `).join('')}
                             </div>
-                            ${state.requestData.estimatedPrice ? <div class="bg-green-50 border border-green-200 p-3 rounded"><p class="text-sm">अनुमानित कीमत: <strong class="text-xl text-green-600">₹${state.requestData.estimatedPrice}</strong></p></div> : ''}
+                            ${state.requestData.estimatedPrice ? `<div class="bg-green-50 border border-green-200 p-3 rounded"><p class="text-sm">अनुमानित कीमत: <strong class="text-xl text-green-600">₹${state.requestData.estimatedPrice}</strong></p></div>` : ''}
                             <textarea onchange="updateRequestData('description', this.value)" class="w-full px-4 py-3 border rounded-lg" rows="3" placeholder="काम का विवरण"></textarea>
                             <input type="file" accept="image/*" onchange="handleImageUpload(event)" class="w-full px-4 py-3 border rounded-lg">
-                            ${state.requestData.photo ? <img src="${state.requestData.photo}" class="max-w-xs rounded-lg shadow-md"> : ''}
+                            ${state.requestData.photo ? `<img src="${state.requestData.photo}" class="max-w-xs rounded-lg shadow-md">` : ''}
                             <button onclick="handleRequest()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg font-semibold">रिक्वेस्ट भेजें</button>
                         </div>
                     </div>
@@ -293,7 +293,7 @@
                                 </div>
                                 <p class="text-gray-700 mb-2">${req.description}</p>
                                 <p class="text-green-600 font-bold text-lg mb-2">अनुमानित: ₹${req.estimatedPrice}</p>
-                                ${req.photo ? <img src="${req.photo}" class="max-w-md rounded-lg shadow-md mb-3"> : ''}
+                                ${req.photo ? `<img src="${req.photo}" class="max-w-md rounded-lg shadow-md mb-3">` : ''}
                                 <div class="flex gap-2">
                                     <a href="tel:${req.customerPhone}" class="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 rounded text-center font-medium">📞 ${req.customerPhone} पर कॉल करें</a>
                                     <button onclick="viewSlip('${req.requestId}')" class="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white py-2 rounded font-medium">📄 Slip देखें</button>
@@ -344,7 +344,7 @@
                                             <td class="p-3">${w.area}</td>
                                             <td class="p-3">${w.verified ? '<span class="text-green-600 font-medium">✓ Verified</span>' : '<span class="text-orange-600 font-medium">⏳ Pending</span>'}</td>
                                             <td class="p-3">
-                                                ${!w.verified ? <button onclick="approveWorker(${w.id})" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-xs mr-2">Approve</button> : ''}
+                                                ${!w.verified ? `<button onclick="approveWorker(${w.id})" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-xs mr-2">Approve</button>` : ''}
                                                 <button onclick="deleteWorker(${w.id})" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs">Delete</button>
                                             </td>
                                         </tr>
